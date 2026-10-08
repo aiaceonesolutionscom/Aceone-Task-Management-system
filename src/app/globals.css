@@ -121,8 +121,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
   body {
     @apply bg-background text-foreground;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
   html {
     @apply font-sans;
@@ -135,4 +138,18 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Compact Density Mode Toggle */
+.compact-density table th,
+.compact-density table td {
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
+}
+.compact-density .density-card {
+  padding: 0.65rem !important;
+}
+.compact-density .density-py {
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
 }

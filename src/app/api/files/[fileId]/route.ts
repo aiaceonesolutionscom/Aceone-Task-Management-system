@@ -64,6 +64,22 @@ export async function GET(
     ? `attachment; filename="${encodeURIComponent(attachment.fileName)}"`
     : `inline; filename="${encodeURIComponent(attachment.fileName)}"`;
 
+  // Compute strong ETag for client-side caching & bandwidth optimization
+  const etag = attachment.checksum
+    ? `"${attachment.checksum}"`
+    : `"${attachment.id}-${attachment.fileSize}-${attachment.createdAt.getTime()}"`;
+
+  const ifNoneMatch = request.headers.get("if-none-match");
+  if (ifNoneMatch && ifNoneMatch === etag) {
+    return new NextResponse(null, {
+      status: 304,
+      headers: {
+        "ETag": etag,
+        "Cache-Control": "private, max-age=86400, stale-while-revalidate=3600",
+      },
+    });
+  }
+
   // Return streamed response directly from PostgreSQL BYTEA buffer
   return new NextResponse(attachment.fileData, {
     status: 200,
@@ -72,7 +88,8 @@ export async function GET(
       "Content-Length": attachment.fileSize.toString(),
       "Content-Disposition": disposition,
       "X-Content-Type-Options": "nosniff",
-      "Cache-Control": "private, max-age=3600",
+      "ETag": etag,
+      "Cache-Control": "private, max-age=86400, stale-while-revalidate=3600",
     },
   });
 }

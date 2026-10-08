@@ -103,7 +103,7 @@ export function UserEditModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 shadow-xl border border-neutral-200">
+      <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-xl border border-neutral-200">
         <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-neutral-800" />

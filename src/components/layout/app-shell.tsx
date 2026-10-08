@@ -418,7 +418,7 @@ export function AppShell({
       </aside>
 
       {/* Main Content Area — scrolls independently */}
-      <div className="flex-1 flex flex-col min-w-0 md:h-screen md:overflow-y-auto">
+      <div className="flex-1 flex flex-col min-w-0 md:h-screen md:overflow-y-auto overflow-x-hidden">
         {/* Desktop Top Header */}
         <header className="hidden md:flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-neutral-200 sticky top-0 z-30">
           <div className="flex items-center gap-2 text-xs text-neutral-500 font-medium min-w-0 flex-1 overflow-x-auto no-scrollbar mr-3">
@@ -500,7 +500,7 @@ export function AppShell({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-3.5 sm:p-5 md:p-6 lg:p-7 max-w-full 2xl:max-w-[1600px] w-full mx-auto min-w-0">{children}</main>
+        <main className="flex-1 p-3.5 sm:p-5 md:p-6 lg:p-7 max-w-full 2xl:max-w-[1600px] w-full mx-auto min-w-0 overflow-x-hidden">{children}</main>
       </div>
 
       {/* Sign Out Confirmation Modal */}

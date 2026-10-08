@@ -303,8 +303,8 @@ export function ReportsCRMViewer({
       </div>
 
       {/* CRM Structured Data Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs border-collapse">
+      <div className="overflow-x-auto no-scrollbar">
+        <table className="w-full text-left text-xs border-collapse min-w-[750px] md:min-w-full">
           <thead className="bg-[#f9fafb] text-[11px] font-bold uppercase text-neutral-500 border-b border-neutral-200">
             <tr>
               <th className="py-2.5 px-4">Task ID</th>
