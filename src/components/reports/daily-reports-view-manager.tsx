@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   FileText,
@@ -16,9 +16,15 @@ import {
   Building2,
   ChevronRight,
   Sparkles,
+  Trash2,
+  Loader2,
+  X,
 } from "lucide-react";
 import { DailyReportForm } from "@/components/reports/daily-report-form";
 import { DailyReportReviewActions } from "@/components/reports/daily-report-review-actions";
+import { deleteDailyReportAction } from "@/server/actions/daily-reports";
+import { Pagination } from "@/components/ui/pagination";
+import { toast } from "sonner";
 
 type CustomFieldValueItem = {
   id: number;
@@ -73,6 +79,7 @@ export function DailyReportsViewManager({
   userPrimaryDepartmentId,
   isEmployee,
   isManager,
+  isSuperAdmin = false,
   canReview = true,
   canApprove = true,
   canSubmit = true,
@@ -85,6 +92,7 @@ export function DailyReportsViewManager({
   userPrimaryDepartmentId?: number | null;
   isEmployee: boolean;
   isManager: boolean;
+  isSuperAdmin?: boolean;
   canReview?: boolean;
   canApprove?: boolean;
   canSubmit?: boolean;
@@ -104,6 +112,19 @@ export function DailyReportsViewManager({
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Pagination State (10 reports per page)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const PAGE_SIZE = 10;
+
+  // Delete Report State
+  const [reportToDelete, setReportToDelete] = useState<DailyReportItem | null>(null);
+  const [deletingReport, setDeletingReport] = useState<boolean>(false);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [datePreset, customDate, selectedUserId, selectedDepartmentId, selectedStatus, searchQuery]);
 
   // Helpers to get YYYY-MM-DD for local comparisons
   const toDateString = (d: Date) => {
@@ -200,6 +221,28 @@ export function DailyReportsViewManager({
     last7DaysStr,
     firstDayOfMonthStr,
   ]);
+
+  // Pagination slice
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / PAGE_SIZE));
+  const paginatedReports = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredReports.slice(start, start + PAGE_SIZE);
+  }, [filteredReports, currentPage]);
+
+  const handleConfirmDelete = async () => {
+    if (!reportToDelete) return;
+    setDeletingReport(true);
+    try {
+      const res = await deleteDailyReportAction(reportToDelete.id);
+      toast.success(res.message || "Daily report deleted successfully.");
+      setReportToDelete(null);
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete daily report.");
+    } finally {
+      setDeletingReport(false);
+    }
+  };
 
   // Overall Statistics across loaded reports
   const stats = useMemo(() => {
@@ -708,8 +751,9 @@ export function DailyReportsViewManager({
                 )}
               </div>
             ) : (
-              <div className="divide-y divide-neutral-100">
-                {filteredReports.map((report) => {
+              <>
+                <div className="divide-y divide-neutral-100">
+                {paginatedReports.map((report) => {
                   const dateInfo = formatReportDate(report.reportDate);
                   const isCurrentUser = report.userId === currentUserId;
 
@@ -763,7 +807,7 @@ export function DailyReportsViewManager({
                           </div>
                         </div>
 
-                        {/* Status & Review State */}
+                        {/* Status & Review State & Delete Action */}
                         <div className="flex items-center gap-2 self-start sm:self-auto">
                           <span
                             className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
@@ -778,6 +822,18 @@ export function DailyReportsViewManager({
                               ? "Pending Review"
                               : report.status.replace("_", " ")}
                           </span>
+
+                          {(isSuperAdmin || isManager || isCurrentUser) && (
+                            <button
+                              type="button"
+                              onClick={() => setReportToDelete(report)}
+                              className="p-1 rounded text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                              title="Delete daily report"
+                              aria-label="Delete report"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -838,7 +894,87 @@ export function DailyReportsViewManager({
                   );
                 })}
               </div>
+
+              {/* Pagination Controls */}
+              {filteredReports.length > PAGE_SIZE && (
+                  <div className="p-4 border-t border-neutral-100 flex items-center justify-center bg-[#fafbfc]">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={filteredReports.length}
+                      pageSize={PAGE_SIZE}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
+              </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Report Confirmation Modal */}
+      {reportToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="p-2 bg-red-50 rounded-full">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-neutral-900">Delete Daily Report</h3>
+                <p className="text-xs text-neutral-500">
+                  This action permanently removes this daily activity log.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-neutral-50 p-3 rounded-md border border-neutral-200 text-xs space-y-1">
+              <p className="font-semibold text-neutral-900">
+                Reporter: {reportToDelete.user.name} ({reportToDelete.department.name})
+              </p>
+              <p className="text-neutral-500">
+                Report Date:{" "}
+                {new Date(reportToDelete.reportDate).toLocaleDateString([], {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+
+            <p className="text-xs text-neutral-600">
+              Are you sure you want to permanently delete this daily report? This action cannot be undone.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setReportToDelete(null)}
+                disabled={deletingReport}
+                className="px-3 py-1.5 text-xs font-semibold rounded border border-neutral-300 text-neutral-700 hover:bg-neutral-50 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deletingReport}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {deletingReport ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Report</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

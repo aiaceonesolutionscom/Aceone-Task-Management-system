@@ -140,6 +140,7 @@ export default async function DailyReportsPage({
           userPrimaryDepartmentId={user.primaryDepartmentId}
           isEmployee={isEmployee}
           isManager={isManager}
+          isSuperAdmin={isSuperAdmin}
           canSubmit={canSubmit}
           canReview={canReview}
           canApprove={canApprove}

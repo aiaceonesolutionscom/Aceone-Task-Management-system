@@ -131,3 +131,54 @@ export async function reviewDailyReport(
 
   return report;
 }
+
+/**
+ * Permanently deletes a daily report and its custom field values.
+ */
+export async function deleteDailyReport(user: EffectiveUser, reportId: number) {
+  const report = await db.dailyReport.findUnique({
+    where: { id: reportId },
+    include: {
+      user: { select: { id: true, name: true } },
+    },
+  });
+
+  if (!report) {
+    throw new Error("Daily report not found.");
+  }
+
+  const isSuperAdmin = Boolean(
+    user.role.isSystem || user.role.code === "super_admin" || user.role.code === "admin"
+  );
+  const isOwner = report.userId === user.id;
+  const canDeleteReports = hasEffectivePermission(user, "report.delete") || isSuperAdmin;
+
+  if (!isSuperAdmin && !canDeleteReports && !isOwner) {
+    throw new Error("Forbidden: You do not have permission to delete this daily report.");
+  }
+
+  // Delete linked field values first
+  await db.customFieldValue.deleteMany({
+    where: { dailyReportId: reportId },
+  });
+
+  // Delete daily report
+  await db.dailyReport.delete({
+    where: { id: reportId },
+  });
+
+  await recordAudit({
+    actorId: user.id,
+    action: "daily_report.delete",
+    entityType: "REPORT",
+    entityId: reportId,
+    metadata: {
+      reportDate: report.reportDate,
+      reporterId: report.userId,
+      reporterName: report.user.name,
+      departmentId: report.departmentId,
+    },
+  });
+
+  return { success: true, message: `Daily report for ${new Date(report.reportDate).toLocaleDateString()} deleted.` };
+}

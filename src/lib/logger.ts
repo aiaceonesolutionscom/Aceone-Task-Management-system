@@ -34,10 +34,14 @@ class SystemLogger {
     return path.join(this.logDir, `${prefix}-${today}.log`);
   }
 
+  private getActiveLogFilename(prefix: "combined" | "error" = "combined"): string {
+    return path.join(this.logDir, `${prefix}.log`);
+  }
+
   private writeToFile(filepath: string, line: string) {
     try {
       fs.appendFileSync(filepath, line + "\n", "utf8");
-    } catch (err) {
+    } catch {
       // In serverless / restricted edge environments, silently fall back
     }
   }
@@ -70,9 +74,22 @@ class SystemLogger {
       ...(context?.metadata ? { metadata: context.metadata } : {}),
     };
 
-    const line = JSON.stringify(payload);
+    const jsonLine = JSON.stringify(payload);
 
-    // 1. Console Output with clear tagging
+    // Formatted readable text line for fast cPanel terminal viewing (tail -f logs/error.log)
+    const contextPrefix = [
+      context?.module ? `[${context.module}]` : "",
+      context?.action ? `[${context.action}]` : "",
+      context?.userId ? `[User:${context.userId}]` : "",
+    ].filter(Boolean).join(" ");
+
+    const formattedTerminalLine = `[${timestamp}] [${level.toUpperCase()}] ${contextPrefix ? `${contextPrefix} ` : ""}${message}${
+      errorDetails
+        ? `\n  Details: ${errorDetails.message}${errorDetails.stack ? `\n  Stack: ${errorDetails.stack}` : ""}`
+        : ""
+    }`;
+
+    // 1. Console Output with clear tagging for cPanel passenger / stdout logs
     const colorTag =
       level === "error"
         ? "\x1b[31m[ERROR]\x1b[0m"
@@ -90,10 +107,13 @@ class SystemLogger {
       console.log(`${colorTag} [${timestamp}] ${message}`, payload);
     }
 
-    // 2. Persistent Rotating File Logging
-    this.writeToFile(this.getLogFilename("combined"), line);
+    // 2. Persistent Live File Logging for cPanel Terminal (tail -f logs/error.log)
+    this.writeToFile(this.getActiveLogFilename("combined"), formattedTerminalLine);
+    this.writeToFile(this.getLogFilename("combined"), jsonLine);
+
     if (level === "error") {
-      this.writeToFile(this.getLogFilename("error"), line);
+      this.writeToFile(this.getActiveLogFilename("error"), formattedTerminalLine);
+      this.writeToFile(this.getLogFilename("error"), jsonLine);
     }
   }
 
