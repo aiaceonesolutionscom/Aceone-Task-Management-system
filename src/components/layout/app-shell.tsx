@@ -67,8 +67,24 @@ export function AppShell({
   const [realTimeApprovalsCount, setRealTimeApprovalsCount] = useState<number>(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Persist collapsed state & auto-collapse on compact screens (e.g. laptops < 1200px)
+  // Persist collapsed state & auto-collapse on compact screens (e.g. laptops < 1200px) or user preferences
   useEffect(() => {
+    try {
+      const prefsRaw = localStorage.getItem("aceone_user_preferences");
+      if (prefsRaw) {
+        const p = JSON.parse(prefsRaw);
+        if (p.autoCollapseSidebar === true) {
+          setCollapsed(true);
+          return;
+        }
+        if (p.compactDensity === true) {
+          document.documentElement.classList.add("compact-density");
+        } else {
+          document.documentElement.classList.remove("compact-density");
+        }
+      }
+    } catch {}
+
     const saved = localStorage.getItem("sidebar-collapsed");
     if (saved === "true") {
       setCollapsed(true);

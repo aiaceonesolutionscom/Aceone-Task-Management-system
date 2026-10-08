@@ -28,6 +28,7 @@ export const PERMISSIONS = [
   { key: "user.create", label: "Create user accounts", group: "Users" },
   { key: "user.edit", label: "Edit user accounts", group: "Users" },
   { key: "user.delete", label: "Delete / deactivate users", group: "Users" },
+  { key: "user.profile_edit", label: "Edit own profile details (Name, Phone, Bio)", group: "Users" },
   { key: "user.view_passwords", label: "View & recover user passwords (Credentials Vault)", group: "Users" },
 
   // Reports & Analytics CRM
@@ -76,7 +77,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
   admin: [
     "task.view", "task.create", "task.edit", "task.delete", "task.assign", "task.comment", "task.submit", "task.review", "task.approve",
     "category.view", "category.create", "category.edit", "category.delete",
-    "user.view", "user.create", "user.edit", "user.delete", "user.view_passwords",
+    "user.view", "user.create", "user.edit", "user.delete", "user.profile_edit", "user.view_passwords",
     "report.view", "report.category.view", "report.crm.view", "report.export", "report.create", "report.review", "report.approve",
     "approval.view", "approval.review", "approval.approve",
     "file.view", "file.upload", "file.download", "file.edit", "file.delete",

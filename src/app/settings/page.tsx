@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/layout/app-shell";
@@ -11,9 +10,7 @@ import {
   User,
   Shield,
   KeyRound,
-  Building2,
   Sliders,
-  Sparkles,
 } from "lucide-react";
 
 export default async function SettingsPage() {
@@ -34,6 +31,14 @@ export default async function SettingsPage() {
     user.role.code === "admin" ||
     user.effectivePermissions?.includes("*") ||
     user.effectivePermissions?.includes("user.view_passwords")
+  );
+
+  const canEditProfile = Boolean(
+    user.role.isSystem ||
+    user.role.code === "super_admin" ||
+    user.role.code === "admin" ||
+    user.effectivePermissions?.includes("*") ||
+    user.effectivePermissions?.includes("user.profile_edit")
   );
 
   // If permitted (Super Admin, Admin, CEO, or user.view_passwords grant), fetch vault and audit history
@@ -112,7 +117,7 @@ export default async function SettingsPage() {
             </span>
           </div>
 
-          <ProfileSettingsForm user={profileData} />
+          <ProfileSettingsForm user={profileData} canEditProfile={canEditProfile} />
         </div>
 
         {/* Section 2: Password & Credentials Management (Default for ALL employees/users) */}
@@ -153,34 +158,6 @@ export default async function SettingsPage() {
             auditLogs={passwordAuditLogs}
           />
         )}
-
-        {/* Section 5: Organization Information */}
-        <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-2xs space-y-3">
-          <div className="flex items-center gap-2 pb-2 border-b border-neutral-100">
-            <Building2 className="w-4 h-4 text-neutral-700" />
-            <h2 className="text-sm font-bold text-neutral-900">Organization Information</h2>
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 bg-neutral-50 rounded-lg border border-neutral-200 text-xs">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/aceone-logo.webp"
-                alt="AceOne Solutions"
-                width={120}
-                height={32}
-                className="h-7 w-auto object-contain"
-              />
-              <div>
-                <p className="font-bold text-neutral-900">AceOne Solutions Task Management</p>
-                <p className="text-[11px] text-neutral-500">Internal Enterprise Workspace</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-semibold text-emerald-700 text-xs">All Systems Operational</span>
-            </div>
-          </div>
-        </div>
       </div>
     </AppShell>
   );

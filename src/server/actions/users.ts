@@ -597,6 +597,24 @@ export async function adminResetUserPasswordAction(userId: number, newPassword: 
  */
 export async function updateProfileSettingsAction(formData: FormData) {
   const user = await requireUser();
+  const effectiveUser = await getEffectiveUser(user.id);
+
+  const isPrivileged = Boolean(
+    user.role.isSystem ||
+    user.role.code === "super_admin" ||
+    user.role.code === "admin"
+  );
+
+  const canEditProfile =
+    isPrivileged ||
+    user.effectivePermissions?.includes("*") ||
+    user.effectivePermissions?.includes("user.profile_edit") ||
+    (effectiveUser && hasEffectivePermission(effectiveUser, "user.profile_edit"));
+
+  if (!canEditProfile) {
+    throw new Error("You do not have permission to modify profile details. Please contact your Super Admin.");
+  }
+
   const name = (formData.get("name") as string)?.trim();
   const phone = (formData.get("phone") as string)?.trim() || null;
   const description = (formData.get("description") as string)?.trim() || null;

@@ -23,9 +23,10 @@ interface ProfileSettingsFormProps {
       name: string;
     } | null;
   };
+  canEditProfile?: boolean;
 }
 
-export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
+export function ProfileSettingsForm({ user, canEditProfile = false }: ProfileSettingsFormProps) {
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone || "");
   const [description, setDescription] = useState(user.description || "");
@@ -95,20 +96,25 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
         </div>
       </div>
 
-      {/* Editable Fields */}
+      {/* Editable Fields (Controlled by canEditProfile permission) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
         <div className="space-y-1">
           <label className="text-xs font-semibold text-neutral-700 flex items-center gap-1.5">
             <User className="w-3.5 h-3.5 text-neutral-400" />
-            <span>Full Name *</span>
+            <span>Full Name</span>
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Your official name"
+            disabled={!canEditProfile}
+            readOnly={!canEditProfile}
             required
-            className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-neutral-900 bg-white"
+            className={`w-full px-3 py-2 text-xs border rounded-md focus:outline-none ${
+              canEditProfile
+                ? "border-neutral-300 focus:ring-1 focus:ring-neutral-900 bg-white"
+                : "border-neutral-200 bg-neutral-50 text-neutral-600 cursor-not-allowed"
+            }`}
           />
         </div>
 
@@ -121,8 +127,14 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
             type="text"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="+92 300 1234567"
-            className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-neutral-900 bg-white"
+            disabled={!canEditProfile}
+            readOnly={!canEditProfile}
+            placeholder={canEditProfile ? "+92 300 1234567" : "—"}
+            className={`w-full px-3 py-2 text-xs border rounded-md focus:outline-none ${
+              canEditProfile
+                ? "border-neutral-300 focus:ring-1 focus:ring-neutral-900 bg-white"
+                : "border-neutral-200 bg-neutral-50 text-neutral-600 cursor-not-allowed"
+            }`}
           />
         </div>
       </div>
@@ -136,24 +148,32 @@ export function ProfileSettingsForm({ user }: ProfileSettingsFormProps) {
           rows={2}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Brief summary of your professional role, responsibilities, or contact hours..."
-          className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-neutral-900 bg-white"
+          disabled={!canEditProfile}
+          readOnly={!canEditProfile}
+          placeholder={canEditProfile ? "Brief summary of your professional role, responsibilities, or contact hours..." : "No bio provided."}
+          className={`w-full px-3 py-2 text-xs border rounded-md focus:outline-none ${
+            canEditProfile
+              ? "border-neutral-300 focus:ring-1 focus:ring-neutral-900 bg-white"
+              : "border-neutral-200 bg-neutral-50 text-neutral-600 cursor-not-allowed"
+          }`}
         />
       </div>
 
-      <div className="pt-2 flex items-center justify-between border-t border-neutral-100">
-        <p className="text-[11px] text-neutral-400">
-          Your profile details are visible to team members on shared tasks and reviews.
-        </p>
-        <button
-          type="submit"
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 text-white rounded-md text-xs font-semibold hover:bg-neutral-800 disabled:opacity-50 transition-colors shadow-xs cursor-pointer"
-        >
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          <span>{loading ? "Saving Changes..." : "Save Profile"}</span>
-        </button>
-      </div>
+      {canEditProfile && (
+        <div className="pt-2 flex items-center justify-between border-t border-neutral-100">
+          <p className="text-[11px] text-neutral-400">
+            Your profile details are visible to team members on shared tasks and reviews.
+          </p>
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 text-white rounded-md text-xs font-semibold hover:bg-neutral-800 disabled:opacity-50 transition-colors shadow-xs cursor-pointer"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>{loading ? "Saving Changes..." : "Save Profile"}</span>
+          </button>
+        </div>
+      )}
     </form>
   );
 }

@@ -81,21 +81,36 @@ export function NotificationPopover({
 
       // Check for incoming new unread notifications in real-time (ONLY primary instance fires alerts)
       if (initialFetchDone.current && isPrimary) {
+        let enableSound = true;
+        let enableToast = true;
+        try {
+          const raw = localStorage.getItem("aceone_user_preferences");
+          if (raw) {
+            const p = JSON.parse(raw);
+            if (p.soundAlerts === false) enableSound = false;
+            if (p.taskPushAlerts === false) enableToast = false;
+          }
+        } catch {}
+
         for (const n of notifs) {
           if (!n.isRead && !globalToastedIds.has(n.id)) {
             globalToastedIds.add(n.id);
-            playNotificationSound();
-            toast.info(n.title, {
-              id: `notif-${n.id}`,
-              description: n.message,
-              duration: 5000,
-              action: n.taskId
-                ? {
-                    label: "Open Task",
-                    onClick: () => router.push(`/tasks/${n.taskId}`),
-                  }
-                : undefined,
-            });
+            if (enableSound) {
+              playNotificationSound();
+            }
+            if (enableToast) {
+              toast.info(n.title, {
+                id: `notif-${n.id}`,
+                description: n.message,
+                duration: 5000,
+                action: n.taskId
+                  ? {
+                      label: "Open Task",
+                      onClick: () => router.push(`/tasks/${n.taskId}`),
+                    }
+                  : undefined,
+              });
+            }
           }
         }
       }
