@@ -50,6 +50,13 @@ export function UserEditModal({
       )
     )
   );
+  const [canViewReportsCRM, setCanViewReportsCRM] = useState<boolean>(
+    Boolean(
+      user.permissionOverrides?.some(
+        (o) => o.permissionKey === "report.crm.view" && o.isGranted
+      )
+    )
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +88,7 @@ export function UserEditModal({
         formData.set("password", newPassword);
       }
       formData.set("canViewPasswords", canViewPasswords ? "true" : "false");
+      formData.set("canViewReportsCRM", canViewReportsCRM ? "true" : "false");
 
       await updateUserAction(formData);
       toast.success("User updated successfully!");
@@ -232,7 +240,7 @@ export function UserEditModal({
           </div>
 
           {/* Password Vault Access Permission Override */}
-          <div className="pt-2 border-t border-neutral-100">
+          <div className="pt-2 border-t border-neutral-100 space-y-2">
             <label className="flex items-start gap-2.5 p-3 rounded-lg bg-purple-50/70 border border-purple-200 cursor-pointer hover:bg-purple-50 transition-colors">
               <input
                 type="checkbox"
@@ -247,6 +255,25 @@ export function UserEditModal({
                 </span>
                 <p className="text-[11px] text-neutral-600 leading-relaxed">
                   Allows this user (e.g. CEO, Department Executive) to view employee passwords and recovery logs.
+                </p>
+              </div>
+            </label>
+
+            {/* Reports & Analytics CRM Access Permission Override */}
+            <label className="flex items-start gap-2.5 p-3 rounded-lg bg-blue-50/70 border border-blue-200 cursor-pointer hover:bg-blue-50 transition-colors">
+              <input
+                type="checkbox"
+                checked={canViewReportsCRM}
+                onChange={(e) => setCanViewReportsCRM(e.target.checked)}
+                className="mt-0.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-600 h-4 w-4"
+              />
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-neutral-900 flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Grant Reports CRM &amp; Deep Analytics Access</span>
+                </span>
+                <p className="text-[11px] text-neutral-600 leading-relaxed">
+                  Allows this user to access the Advanced CRM records explorer, deep filters, and custom exports in Reports &amp; Analytics.
                 </p>
               </div>
             </label>

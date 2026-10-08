@@ -26,6 +26,7 @@ export function UserCreateModal({
   const [roleId, setRoleId] = useState<number>(roles[0]?.id || 1);
   const [departmentId, setDepartmentId] = useState<number>(categories[0]?.id || 1);
   const [canViewPasswords, setCanViewPasswords] = useState(false);
+  const [canViewReportsCRM, setCanViewReportsCRM] = useState(false);
   const [assignmentScopes, setAssignmentScopes] = useState<number[]>([]);
   const [approvalScopes, setApprovalScopes] = useState<number[]>([]);
 
@@ -55,6 +56,7 @@ export function UserCreateModal({
       formData.set("roleId", roleId.toString());
       formData.set("departmentId", departmentId.toString());
       formData.set("canViewPasswords", canViewPasswords ? "true" : "false");
+      formData.set("canViewReportsCRM", canViewReportsCRM ? "true" : "false");
 
       assignmentScopes.forEach((id) => formData.append("assignmentScopes", id.toString()));
       approvalScopes.forEach((id) => formData.append("approvalScopes", id.toString()));
@@ -67,6 +69,8 @@ export function UserCreateModal({
         setName("");
         setEmail("");
         setUsername("");
+        setCanViewPasswords(false);
+        setCanViewReportsCRM(false);
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to create user");
@@ -249,7 +253,7 @@ export function UserCreateModal({
                   </div>
 
                   {/* Password Vault Access Permission Override */}
-                  <div className="pt-2">
+                  <div className="pt-2 space-y-2">
                     <label className="flex items-start gap-2.5 p-3 rounded-lg bg-purple-50/70 border border-purple-200 cursor-pointer hover:bg-purple-50 transition-colors">
                       <input
                         type="checkbox"
@@ -264,6 +268,25 @@ export function UserCreateModal({
                         </span>
                         <p className="text-[11px] text-neutral-600 leading-relaxed">
                           Allows this user (e.g. CEO, Executive Director) to view employee passwords and recovery logs.
+                        </p>
+                      </div>
+                    </label>
+
+                    {/* Reports & Analytics CRM Access Permission Override */}
+                    <label className="flex items-start gap-2.5 p-3 rounded-lg bg-blue-50/70 border border-blue-200 cursor-pointer hover:bg-blue-50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={canViewReportsCRM}
+                        onChange={(e) => setCanViewReportsCRM(e.target.checked)}
+                        className="mt-0.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-600 h-4 w-4"
+                      />
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-neutral-900 flex items-center gap-1.5">
+                          <Compass className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Grant Reports CRM &amp; Deep Analytics Access</span>
+                        </span>
+                        <p className="text-[11px] text-neutral-600 leading-relaxed">
+                          Allows this user to access the Advanced CRM records explorer, deep filters, and custom exports in Reports &amp; Analytics.
                         </p>
                       </div>
                     </label>

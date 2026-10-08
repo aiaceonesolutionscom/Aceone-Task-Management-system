@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getEffectiveUser, hasEffectivePermission, getAllowedDepartmentIds } from "@/lib/scopes";
 import { db } from "@/lib/db";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -19,6 +19,7 @@ export async function GET() {
   const canExport =
     isPrivileged ||
     hasEffectivePermission(effectiveUser, "report.export") ||
+    hasEffectivePermission(effectiveUser, "report.crm.view") ||
     hasEffectivePermission(effectiveUser, "report.view");
 
   if (!canExport) {
@@ -30,8 +31,52 @@ export async function GET() {
 
   const allowedDeptIds = isPrivileged ? null : getAllowedDepartmentIds(effectiveUser);
 
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get("q")?.trim() || "";
+  const status = searchParams.get("status")?.trim() || "";
+  const priority = searchParams.get("priority")?.trim() || "";
+  const departmentIdParam = searchParams.get("departmentId")?.trim() || "";
+  const assigneeIdParam = searchParams.get("assigneeId")?.trim() || "";
+  const overdueOnly = searchParams.get("overdue") === "true";
+
+  const where: any = {
+    taskCode: { not: { contains: "-GENERAL" } },
+    ...(allowedDeptIds !== null
+      ? { departmentId: { in: allowedDeptIds.length > 0 ? allowedDeptIds : [-1] } }
+      : {}),
+  };
+
+  if (q) {
+    where.OR = [
+      { title: { contains: q, mode: "insensitive" } },
+      { taskCode: { contains: q, mode: "insensitive" } },
+      { description: { contains: q, mode: "insensitive" } },
+    ];
+  }
+  if (status) where.status = status;
+  if (priority) where.priority = priority;
+  if (departmentIdParam) {
+    const dId = parseInt(departmentIdParam, 10);
+    if (!isNaN(dId)) {
+      if (allowedDeptIds !== null && !allowedDeptIds.includes(dId)) {
+        return NextResponse.json({ error: "Forbidden category access" }, { status: 403 });
+      }
+      where.departmentId = dId;
+    }
+  }
+  if (assigneeIdParam) {
+    const aId = parseInt(assigneeIdParam, 10);
+    if (!isNaN(aId)) {
+      where.assignees = { some: { userId: aId } };
+    }
+  }
+  if (overdueOnly) {
+    where.deadline = { lt: new Date() };
+    where.status = { notIn: ["APPROVED", "COMPLETED", "ARCHIVED", "CANCELLED"] };
+  }
+
   const tasks = await db.task.findMany({
-    where: allowedDeptIds !== null ? { departmentId: { in: allowedDeptIds } } : {},
+    where,
     include: {
       department: true,
       assignor: true,

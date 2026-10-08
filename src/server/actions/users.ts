@@ -114,6 +114,17 @@ export async function createUserAction(formData: FormData) {
       });
     }
 
+    // Add reports CRM permission override if granted
+    if (formData.get("canViewReportsCRM") === "true") {
+      await tx.userPermissionOverride.create({
+        data: {
+          userId: u.id,
+          permissionKey: "report.crm.view",
+          isGranted: true,
+        },
+      });
+    }
+
     return u;
   });
 
@@ -342,6 +353,37 @@ export async function updateUserAction(formData: FormData) {
         where: {
           userId,
           permissionKey: "user.view_passwords",
+        },
+      });
+    }
+  }
+
+  // Handle user-specific reports CRM permission override
+  const canViewReportsCRMParam = formData.get("canViewReportsCRM");
+  if (canViewReportsCRMParam !== null) {
+    const isGranted = canViewReportsCRMParam === "true";
+    if (isGranted) {
+      await db.userPermissionOverride.upsert({
+        where: {
+          userId_permissionKey: {
+            userId,
+            permissionKey: "report.crm.view",
+          },
+        },
+        create: {
+          userId,
+          permissionKey: "report.crm.view",
+          isGranted: true,
+        },
+        update: {
+          isGranted: true,
+        },
+      });
+    } else {
+      await db.userPermissionOverride.deleteMany({
+        where: {
+          userId,
+          permissionKey: "report.crm.view",
         },
       });
     }

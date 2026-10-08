@@ -30,9 +30,11 @@ export const PERMISSIONS = [
   { key: "user.delete", label: "Delete / deactivate users", group: "Users" },
   { key: "user.view_passwords", label: "View & recover user passwords (Credentials Vault)", group: "Users" },
 
-  // Reports
-  { key: "report.view", label: "View reports & analytics", group: "Reports" },
-  { key: "report.category.view", label: "View category & team reports", group: "Reports" },
+  // Reports & Analytics CRM
+  { key: "report.view", label: "View reports & analytics dashboard", group: "Reports" },
+  { key: "report.category.view", label: "View category & department breakdown", group: "Reports" },
+  { key: "report.crm.view", label: "Access CRM & Advanced Filtered Data Records", group: "Reports" },
+  { key: "report.export", label: "Export CSV / Excel task reports", group: "Reports" },
   { key: "report.create", label: "Submit daily reports", group: "Reports" },
   { key: "report.review", label: "Review daily reports & request revisions", group: "Reports" },
   { key: "report.approve", label: "Approve daily reports", group: "Reports" },
@@ -75,7 +77,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     "task.view", "task.create", "task.edit", "task.delete", "task.assign", "task.comment", "task.submit", "task.review", "task.approve",
     "category.view", "category.create", "category.edit", "category.delete",
     "user.view", "user.create", "user.edit", "user.delete", "user.view_passwords",
-    "report.view", "report.category.view", "report.create", "report.review", "report.approve",
+    "report.view", "report.category.view", "report.crm.view", "report.export", "report.create", "report.review", "report.approve",
     "approval.view", "approval.review", "approval.approve",
     "file.view", "file.upload", "file.download", "file.edit", "file.delete",
     "chat.view", "chat.send",
@@ -86,7 +88,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     "task.view", "task.create", "task.edit", "task.assign", "task.comment", "task.submit", "task.review", "task.approve",
     "category.view",
     "user.view",
-    "report.view", "report.category.view", "report.create", "report.review", "report.approve",
+    "report.view", "report.category.view", "report.crm.view", "report.export", "report.create", "report.review", "report.approve",
     "approval.view", "approval.review", "approval.approve",
     "file.view", "file.upload", "file.download", "file.edit",
     "chat.view", "chat.send",
