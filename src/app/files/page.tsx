@@ -25,7 +25,7 @@ export default async function FilesStoragePage() {
 
   // Build task query where clause based on user role and department scopes
   const taskWhere: any = {
-    deletedAt: null,
+    taskCode: { not: { contains: "-GENERAL" } },
     OR: [
       { attachments: { some: { deletedAt: null } } },
       { versions: { some: { attachments: { some: { deletedAt: null } } } } },
