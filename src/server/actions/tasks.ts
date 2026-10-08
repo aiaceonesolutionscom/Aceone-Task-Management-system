@@ -11,7 +11,9 @@ import {
   requestChanges,
   approveTask,
   addTaskComment,
+  formatDescriptiveFileName,
 } from "@/lib/task-engine";
+import { saveAttachment } from "@/lib/storage";
 import { revalidatePath } from "next/cache";
 
 export async function startTaskAction(taskId: number) {
@@ -295,17 +297,105 @@ export type UpdateTaskInput = {
   assigneeUserIds?: number[];
   reviewerUserIds?: number[];
   approvalRequired?: boolean;
+  approvalMode?: "ANY_ONE" | "ALL_REQUIRED";
+  referenceLinks?: Array<{ displayName: string; url: string }>;
+  deletedAttachmentIds?: number[];
 };
 
-export async function updateTaskAction(input: UpdateTaskInput) {
+export async function updateTaskAction(input: FormData | UpdateTaskInput) {
   const user = await requireUser();
   const effectiveUser = await getEffectiveUser(user.id);
   if (!effectiveUser || !hasEffectivePermission(effectiveUser, "task.edit")) {
     throw new Error("Forbidden: You do not have permission to edit tasks.");
   }
 
+  let taskId: number;
+  let title: string;
+  let description: string | undefined;
+  let instructions: string | undefined;
+  let departmentId: number;
+  let priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  let deadlineDate: Date | null = null;
+  let dueTime: string | null = null;
+  let approvalRequired = true;
+  let approvalMode: "ANY_ONE" | "ALL_REQUIRED" = "ANY_ONE";
+  let assigneeUserIds: number[] | undefined;
+  let reviewerUserIds: number[] | undefined;
+  let referenceLinks: Array<{ displayName: string; url: string }> | undefined;
+  let deletedAttachmentIds: number[] = [];
+  const files: Array<{ fileName: string; mimeType: string; buffer: Buffer }> = [];
+
+  if (input instanceof FormData) {
+    taskId = parseInt(input.get("taskId") as string, 10);
+    title = ((input.get("title") as string) || "").trim();
+    description = ((input.get("description") as string) || "").trim();
+    instructions = ((input.get("instructions") as string) || "").trim();
+    departmentId = parseInt(input.get("departmentId") as string, 10);
+    priority = (input.get("priority") as "LOW" | "MEDIUM" | "HIGH" | "URGENT") || "MEDIUM";
+    const deadlineStr = input.get("deadline") as string;
+    deadlineDate = deadlineStr ? new Date(deadlineStr) : null;
+    dueTime = (input.get("dueTime") as string) || null;
+    approvalRequired = input.get("approvalRequired") === "true";
+    approvalMode = (input.get("approvalMode") as "ANY_ONE" | "ALL_REQUIRED") || "ANY_ONE";
+
+    assigneeUserIds = input
+      .getAll("assignees")
+      .map((v) => parseInt(v as string, 10))
+      .filter((id) => !isNaN(id));
+
+    reviewerUserIds = input
+      .getAll("reviewers")
+      .map((v) => parseInt(v as string, 10))
+      .filter((id) => !isNaN(id));
+
+    const linksJson = input.get("referenceLinks") as string;
+    if (linksJson) {
+      try {
+        referenceLinks = JSON.parse(linksJson);
+      } catch {}
+    }
+
+    const deletedJson = input.get("deletedAttachmentIds") as string;
+    if (deletedJson) {
+      try {
+        deletedAttachmentIds = JSON.parse(deletedJson);
+      } catch {}
+    }
+
+    const fileEntries = input.getAll("files") as File[];
+    for (const f of fileEntries) {
+      if (f && f.size > 0 && f.name) {
+        const arrayBuffer = await f.arrayBuffer();
+        files.push({
+          fileName: f.name,
+          mimeType: f.type || "application/octet-stream",
+          buffer: Buffer.from(arrayBuffer),
+        });
+      }
+    }
+  } else {
+    taskId = input.taskId;
+    title = (input.title || "").trim();
+    description = input.description;
+    instructions = input.instructions;
+    departmentId = input.departmentId;
+    priority = input.priority;
+    deadlineDate = input.deadline ? new Date(input.deadline) : null;
+    dueTime = input.dueTime ?? null;
+    approvalRequired = input.approvalRequired !== false;
+    approvalMode = input.approvalMode || "ANY_ONE";
+    assigneeUserIds = input.assigneeUserIds;
+    reviewerUserIds = input.reviewerUserIds;
+    referenceLinks = input.referenceLinks;
+    deletedAttachmentIds = input.deletedAttachmentIds || [];
+  }
+
+  if (isNaN(taskId) || !taskId) {
+    throw new Error("Invalid task ID");
+  }
+
   const existingTask = await db.task.findUnique({
-    where: { id: input.taskId },
+    where: { id: taskId },
     include: { assignees: true, reviewers: true },
   });
 
@@ -315,29 +405,29 @@ export async function updateTaskAction(input: UpdateTaskInput) {
     throw new Error("Forbidden: You cannot edit tasks outside your permitted category.");
   }
 
-  const deadline = input.deadline ? new Date(input.deadline) : null;
-
   await db.$transaction(async (tx) => {
     await tx.task.update({
-      where: { id: input.taskId },
+      where: { id: taskId },
       data: {
-        title: input.title.trim(),
-        description: input.description ?? "",
-        instructions: input.instructions ?? "",
-        departmentId: input.departmentId,
-        priority: input.priority,
-        deadline,
-        dueTime: input.dueTime ?? null,
-        approvalRequired: input.approvalRequired !== false,
+        title,
+        description: description ?? "",
+        instructions: instructions ?? "",
+        departmentId,
+        priority,
+        deadline: deadlineDate,
+        dueTime: dueTime ?? null,
+        approvalRequired,
+        approvalMode,
+        referenceLinks: referenceLinks ? (referenceLinks as object) : undefined,
       },
     });
 
-    if (Array.isArray(input.assigneeUserIds)) {
-      await tx.taskAssignee.deleteMany({ where: { taskId: input.taskId } });
-      for (const aId of input.assigneeUserIds) {
+    if (Array.isArray(assigneeUserIds)) {
+      await tx.taskAssignee.deleteMany({ where: { taskId } });
+      for (const aId of assigneeUserIds) {
         await tx.taskAssignee.create({
           data: {
-            taskId: input.taskId,
+            taskId,
             userId: aId,
             assignedBy: user.id,
             status: "ASSIGNED",
@@ -346,12 +436,12 @@ export async function updateTaskAction(input: UpdateTaskInput) {
       }
     }
 
-    if (Array.isArray(input.reviewerUserIds)) {
-      await tx.taskReviewer.deleteMany({ where: { taskId: input.taskId } });
-      for (const rId of input.reviewerUserIds) {
+    if (Array.isArray(reviewerUserIds)) {
+      await tx.taskReviewer.deleteMany({ where: { taskId } });
+      for (const rId of reviewerUserIds) {
         await tx.taskReviewer.create({
           data: {
-            taskId: input.taskId,
+            taskId,
             userId: rId,
             assignedBy: user.id,
           },
@@ -359,38 +449,74 @@ export async function updateTaskAction(input: UpdateTaskInput) {
       }
     }
 
+    if (deletedAttachmentIds && deletedAttachmentIds.length > 0) {
+      await tx.imageAnnotation.deleteMany({
+        where: { attachmentId: { in: deletedAttachmentIds } },
+      });
+      await tx.attachment.updateMany({
+        where: { id: { in: deletedAttachmentIds }, taskId },
+        data: { deletedAt: new Date() },
+      });
+    }
+
     await tx.taskActivityLog.create({
       data: {
-        taskId: input.taskId,
+        taskId,
         userId: user.id,
         action: "TASK_EDITED",
         metadata: {
-          message: `${user.name} updated the task details`,
-          title: input.title,
-          priority: input.priority,
+          message: `${user.name} updated the task details and reference files`,
+          title,
+          priority,
         },
       },
     });
   });
 
+  // Save any new reference attachments
+  if (files.length > 0) {
+    for (const file of files) {
+      const formattedFileName = formatDescriptiveFileName({
+        taskCode: existingTask.taskCode,
+        taskTitle: title,
+        userName: user.name,
+        isReference: true,
+        originalFileName: file.fileName,
+      });
+
+      await saveAttachment({
+        fileName: formattedFileName,
+        mimeType: file.mimeType,
+        fileBuffer: file.buffer,
+        fileSize: file.buffer.length,
+        uploadedById: user.id,
+        taskId,
+        isReference: true,
+      });
+    }
+  }
+
   await recordAudit({
     actorId: user.id,
     action: "task.edit",
     entityType: "TASK",
-    entityId: input.taskId,
+    entityId: taskId,
     metadata: {
       taskCode: existingTask.taskCode,
-      title: input.title,
-      departmentId: input.departmentId,
+      title,
+      departmentId,
+      newFilesCount: files.length,
+      deletedFilesCount: deletedAttachmentIds.length,
     },
   });
 
-  revalidatePath(`/tasks/${input.taskId}`);
+  revalidatePath(`/tasks/${taskId}`);
   revalidatePath("/tasks");
   revalidatePath("/dashboard");
   revalidatePath("/calendar");
+  revalidatePath("/files");
 
-  return { success: true, message: `Task ${existingTask.taskCode || `#${input.taskId}`} updated successfully.` };
+  return { success: true, message: `Task ${existingTask.taskCode || `#${taskId}`} updated successfully.` };
 }
 
 export async function bulkDeleteTasksAction(taskIds: number[]) {
