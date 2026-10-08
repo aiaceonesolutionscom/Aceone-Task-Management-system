@@ -358,7 +358,7 @@ export default async function ReportsAnalyticsPage({
         )}
 
         {/* CRM SECTION — Enterprise Deep Filter Records Explorer with Pagination */}
-        {canViewReportsCRM ? (
+        {canViewReportsCRM && (
           <ReportsCRMViewer
             initialTasks={crmTasks}
             totalTasks={crmTasksCount}
@@ -376,16 +376,6 @@ export default async function ReportsAnalyticsPage({
               overdue: params.overdue === "true",
             }}
           />
-        ) : (
-          <div className="bg-white border border-neutral-200 rounded-xl p-6 shadow-2xs text-center">
-            <div className="w-10 h-10 rounded-full bg-neutral-100 text-neutral-500 flex items-center justify-center mx-auto mb-2">
-              <Lock className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-bold text-neutral-900">CRM &amp; Deep Explorer Restricted</h3>
-            <p className="text-xs text-neutral-500 max-w-md mx-auto mt-1">
-              You currently do not have the <code>report.crm.view</code> permission to browse the granular CRM system data records. Please contact your Super Admin to grant you access.
-            </p>
-          </div>
         )}
 
         {/* Category Breakdown Table — Controlled by report.category.view permission */}
@@ -396,9 +386,6 @@ export default async function ReportsAnalyticsPage({
                 <FolderTree className="w-4 h-4 text-blue-600" />
                 <h2 className="text-sm font-bold text-neutral-900">Department &amp; Category Activity</h2>
               </div>
-              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                Category Access Permitted
-              </span>
             </div>
 
             <div className="w-full overflow-x-auto no-scrollbar">
