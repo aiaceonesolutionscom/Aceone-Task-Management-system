@@ -143,14 +143,8 @@ export function AppShell({
     ...(hasPerm("role.view")
       ? [{ label: "Roles", href: "/organization/roles", icon: Shield }]
       : []),
-    ...(hasPerm("permission.view")
-      ? [{ label: "Permissions", href: "/organization/permissions", icon: KeyRound }]
-      : []),
     ...(hasPerm("scope.view") || hasPerm("scope.manage")
       ? [{ label: "Scopes", href: "/organization/scopes", icon: Compass }]
-      : []),
-    ...(hasPerm("settings.manage")
-      ? [{ label: "Custom Fields", href: "/organization/custom-fields", icon: FileCode2 }]
       : []),
   ];
 

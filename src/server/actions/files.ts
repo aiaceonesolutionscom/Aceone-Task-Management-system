@@ -159,16 +159,11 @@ export async function uploadStandaloneFileAction(formData: FormData) {
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const now = new Date();
-  const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const cleanUser = user.name.replace(/[^a-zA-Z0-9\s]/g, "").trim().split(/\s+/).slice(0, 2).join("_") || "User";
   const origName = file.name || "file.bin";
-  const ext = origName.includes(".") ? origName.split(".").pop()?.toLowerCase() || "bin" : "bin";
-  const rawBase = origName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9\s]/g, "").trim().split(/\s+/).slice(0, 3).join("_") || "File";
-  const formattedFileName = `${rawBase}_${cleanUser}_${dateStr}.${ext}`;
+  const cleanFileName = origName.replace(/[\\/:*?"<>|]/g, "-").trim() || "file.bin";
 
   const saved = await saveAttachment({
-    fileName: formattedFileName,
+    fileName: cleanFileName,
     mimeType: file.type || "application/octet-stream",
     fileBuffer: buffer,
     fileSize: file.size,

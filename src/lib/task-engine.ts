@@ -23,6 +23,7 @@ export function formatDescriptiveFileName({
   userName,
   isReference,
   versionNumber,
+  status,
   originalFileName,
 }: {
   taskCode?: string | null;
@@ -30,36 +31,56 @@ export function formatDescriptiveFileName({
   userName: string;
   isReference: boolean;
   versionNumber?: number;
+  status?: "APPROVED" | "SUBMITTED" | "CHANGES_REQUESTED" | "REFERENCE";
   originalFileName: string;
 }): string {
   const ext = originalFileName.includes(".")
     ? originalFileName.split(".").pop()?.toLowerCase() || "bin"
     : "bin";
 
+  // Clean Task Title (alphanumeric, spaces converted to hyphen, max 4 words)
   const cleanTitle = (taskTitle || "Task")
-    .replace(/[^a-zA-Z0-9\s]/g, "")
+    .replace(/[^a-zA-Z0-9\s-]/g, "")
     .trim()
     .split(/\s+/)
     .slice(0, 4)
-    .join("_") || "Task";
+    .join("-") || "Task";
 
-  const cleanUser = (userName || "User")
-    .replace(/[^a-zA-Z0-9\s]/g, "")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .join("_") || "User";
+  const code = taskCode ? taskCode.replace(/[^a-zA-Z0-9-]/g, "") : "TASK";
 
-  const code = taskCode || "TASK";
+  // Current date formatted: DD-MM-YYYY (or YYYY-MM-DD for sorting)
   const now = new Date();
-  const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const day = String(now.getDate()).padStart(2, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = now.getFullYear();
+  const dateStr = `${day}-${month}-${year}`; // e.g. 08-10-2026
+
+  // If user provided a clean original filename, preserve it directly!
+  const baseName = originalFileName.includes(".")
+    ? originalFileName.substring(0, originalFileName.lastIndexOf(".")).trim()
+    : originalFileName.trim();
+
+  // If already tagged, avoid double tagging
+  const cleanBase = baseName
+    .replace(/[\\/:*?"<>|]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
 
   if (isReference) {
-    return `${code}_${cleanTitle}_REF_${cleanUser}_${dateStr}.${ext}`;
-  } else {
-    const vStr = versionNumber ? `_V${versionNumber}` : "";
-    return `${code}_${cleanTitle}${vStr}_${cleanUser}_${dateStr}.${ext}`;
+    return cleanBase ? `${cleanBase}.${ext}` : `${code}-${cleanTitle}-Reference-${dateStr}.${ext}`;
   }
+
+  // If approved, append approved tag so it clearly shows in downloads & system
+  if (status === "APPROVED") {
+    // If filename doesn't already contain "Approved"
+    if (!/approved/i.test(cleanBase)) {
+      return `${cleanBase}-APPROVED-${dateStr}.${ext}`;
+    }
+    return `${cleanBase}.${ext}`;
+  }
+
+  // Submitted: preserve user's original uploaded file name
+  return cleanBase ? `${cleanBase}.${ext}` : `${cleanTitle}-V${versionNumber || 1}-${dateStr}.${ext}`;
 }
 
 export type CreateTaskInput = {
@@ -406,6 +427,7 @@ export async function submitTaskVersion(
         userName: user.name,
         isReference: false,
         versionNumber: version.versionNumber,
+        status: "SUBMITTED",
         originalFileName: file.fileName,
       });
 
@@ -663,6 +685,28 @@ export async function approveTask(
             reviewedAt: now,
           },
         });
+
+        // Rename submitted deliverables to have APPROVED status tag and date
+        const versionAttachments = await tx.attachment.findMany({
+          where: { versionId: validSubmissionId },
+        });
+
+        for (const att of versionAttachments) {
+          const newName = formatDescriptiveFileName({
+            taskCode: task.taskCode,
+            taskTitle: task.title,
+            userName: user.name,
+            isReference: false,
+            versionNumber: task.versions[0]?.versionNumber || 1,
+            status: "APPROVED",
+            originalFileName: att.fileName,
+          });
+
+          await tx.attachment.update({
+            where: { id: att.id },
+            data: { fileName: newName },
+          });
+        }
       }
 
       await tx.taskAssignee.updateMany({
