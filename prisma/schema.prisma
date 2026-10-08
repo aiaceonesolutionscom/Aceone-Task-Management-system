@@ -1,0 +1,688 @@
+// AceOne Task Management — comprehensive data model
+// Prisma 7 (engineType client via driver adapter @prisma/adapter-pg)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  runtime  = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum DepartmentStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum TaskStatus {
+  DRAFT
+  NEW
+  ASSIGNED
+  VIEWED
+  IN_PROGRESS
+  SUBMITTED
+  PENDING_REVIEW
+  UNDER_REVIEW
+  CHANGES_REQUESTED
+  RESUBMITTED
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AssignmentMode {
+  SPECIFIC
+  MULTIPLE
+  DEPARTMENT
+  AUTO
+}
+
+enum ApprovalMode {
+  ANY_ONE
+  ALL_REQUIRED
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  CHANGES_REQUESTED
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_REASSIGNED
+  TASK_VIEWED
+  REVIEW_REQUIRED
+  NEW_COMMENT
+  MENTION
+  CHANGES_REQUESTED
+  NEW_VERSION_SUBMITTED
+  APPROVAL_REQUIRED
+  TASK_APPROVED
+  TASK_REJECTED
+  DEADLINE_APPROACHING
+  TASK_OVERDUE
+  DAILY_REPORT_REMINDER
+  DAILY_REPORT_SUBMITTED
+  SYSTEM
+}
+
+enum CustomFieldType {
+  TEXT
+  LONG_TEXT
+  NUMBER
+  DATE
+  TIME
+  DATETIME
+  DROPDOWN
+  MULTI_SELECT
+  CHECKBOX
+  RADIO
+  URL
+}
+
+enum CustomFieldEntityType {
+  TASK
+  DAILY_REPORT
+}
+
+enum DailyReportStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users        User[]
+  permissions  RolePermission[]
+
+  @@index([code])
+}
+
+model Permission {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  label     String
+  group     String
+  createdAt DateTime @default(now())
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       Int
+  permissionId Int
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserPermissionOverride {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  permissionKey String
+  isGranted     Boolean  // true = override grant, false = override deny
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionKey])
+  @@index([userId])
+}
+
+model Department {
+  id                  Int              @id @default(autoincrement())
+  name                String           @unique
+  code                String?          @unique
+  description         String?
+  status              DepartmentStatus @default(ACTIVE)
+  dailyReportRequired Boolean          @default(false)
+  approvalRequired    Boolean          @default(true)
+  dashboardConfig     Json?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  members          DepartmentMember[]
+  primaryMembers   User[]                 @relation("PrimaryDepartment")
+  tasks            Task[]
+  dailyReports     DailyReport[]
+  customFields     CustomField[]
+  categoryScopes   UserCategoryScope[]
+  assignmentScopes UserAssignmentScope[]
+  approvalScopes   UserApprovalScope[]
+
+  @@index([code])
+  @@index([status])
+}
+
+model DepartmentMember {
+  id           Int      @id @default(autoincrement())
+  departmentId Int
+  userId       Int
+  joinedAt     DateTime @default(now())
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, userId])
+  @@index([userId])
+}
+
+model UserCategoryScope {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  departmentId Int
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, departmentId])
+  @@index([userId])
+  @@index([departmentId])
+}
+
+model UserAssignmentScope {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  departmentId Int
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, departmentId])
+  @@index([userId])
+  @@index([departmentId])
+}
+
+model UserApprovalScope {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  departmentId Int
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, departmentId])
+  @@index([userId])
+  @@index([departmentId])
+}
+
+model User {
+  id                  Int         @id @default(autoincrement())
+  name                String
+  email               String      @unique
+  username            String?     @unique
+  employeeId          String?     @unique
+  passwordHash        String
+  phone               String?
+  designation         String?
+  description         String?
+  avatarUrl           String?
+  status              UserStatus  @default(ACTIVE)
+  roleId              Int
+  primaryDepartmentId Int?
+  enabledFacilities   Json?       // array of strings e.g. ["tasks", "calendar", "reports", "approvals"]
+  createdByUserId     Int?
+  lastLoginAt         DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  role                 Role                    @relation(fields: [roleId], references: [id])
+  primaryDepartment    Department?             @relation("PrimaryDepartment", fields: [primaryDepartmentId], references: [id], onDelete: SetNull)
+  createdBy            User?                   @relation("UserCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByOf          User[]                  @relation("UserCreatedBy")
+  memberships          DepartmentMember[]
+  sessions             Session[]
+  notifications        Notification[]
+  taskAssignments      TaskAssignee[]
+  taskReviewerRows     TaskReviewer[]
+  taskVersions         TaskVersion[]           @relation("SubmittedVersions")
+  reviewedVersions     TaskVersion[]           @relation("ReviewedVersions")
+  comments             TaskComment[]
+  activityLogs         TaskActivityLog[]       @relation("ActivityActor")
+  auditLogs            AuditLog[]
+  approvals            ApprovalRecord[]
+  createdTasks         Task[]                  @relation("TaskCreatedBy")
+  assignedTasksDirect  Task[]                  @relation("TaskAssignedByDirect")
+  createdProjects      Project[]               @relation("ProjectCreatedBy")
+  assignedByRows       TaskAssignee[]          @relation("TaskAssignedBy")
+  reviewerAssignedByRows TaskReviewer[]         @relation("TaskReviewerAssignedBy")
+  categoryScopes       UserCategoryScope[]
+  assignmentScopes     UserAssignmentScope[]
+  approvalScopes       UserApprovalScope[]
+  permissionOverrides  UserPermissionOverride[]
+  dailyReports         DailyReport[]           @relation("UserDailyReports")
+  reviewedReports      DailyReport[]           @relation("DailyReportReviewer")
+  pushSubscriptions    PushSubscription[]
+  taskViews            TaskView[]
+  attachments          Attachment[]
+  imageAnnotations     ImageAnnotation[]
+
+  @@index([roleId])
+  @@index([primaryDepartmentId])
+  @@index([status])
+  @@index([username])
+  @@index([employeeId])
+}
+
+model Project {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  status      UserStatus @default(ACTIVE)
+  createdBy   Int
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  creator User   @relation("ProjectCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  tasks   Task[]
+}
+
+model Task {
+  id             Int            @id @default(autoincrement())
+  taskCode       String?        @unique // e.g. "AS1-1024"
+  title          String
+  description    String?
+  instructions   String?
+  departmentId   Int
+  projectId      Int?
+  priority       TaskPriority   @default(MEDIUM)
+  status         TaskStatus     @default(NEW)
+  startDate      DateTime?
+  deadline       DateTime?
+  dueTime        String?
+  assignmentMode AssignmentMode @default(SPECIFIC)
+  approvalRequired Boolean      @default(true)
+  approvalMode   ApprovalMode   @default(ANY_ONE)
+  requirements   String?
+  notes          String?
+  referenceLinks Json?
+  sentAt         DateTime?      @default(now())
+  deliveredAt    DateTime?
+  firstViewedAt  DateTime?
+  lastViewedAt   DateTime?
+  createdBy      Int
+  assignedBy     Int?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  department   Department         @relation(fields: [departmentId], references: [id])
+  project      Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  creator      User               @relation("TaskCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  assignor     User?              @relation("TaskAssignedByDirect", fields: [assignedBy], references: [id], onDelete: SetNull)
+  assignees    TaskAssignee[]
+  reviewers    TaskReviewer[]
+  versions     TaskVersion[]
+  attachments  Attachment[]
+  comments     TaskComment[]
+  activities   TaskActivityLog[]  @relation("TaskActivity")
+  notifications Notification[]
+  approvals    ApprovalRecord[]
+  fieldValues  CustomFieldValue[]
+  taskViews    TaskView[]
+
+  @@index([taskCode])
+  @@index([departmentId])
+  @@index([status])
+  @@index([priority])
+  @@index([deadline])
+  @@index([createdBy])
+  @@index([projectId])
+}
+
+model TaskAssignee {
+  id          Int       @id @default(autoincrement())
+  taskId      Int
+  userId      Int
+  assignedBy  Int
+  status      String    @default("ASSIGNED") // ASSIGNED, VIEWED, IN_PROGRESS, SUBMITTED, COMPLETED
+  assignedAt  DateTime  @default(now())
+  viewedAt    DateTime?
+  submittedAt DateTime?
+  completedAt DateTime?
+
+  task     Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignor User @relation("TaskAssignedBy", fields: [assignedBy], references: [id], onDelete: Restrict)
+
+  @@unique([taskId, userId])
+  @@index([userId])
+}
+
+model TaskReviewer {
+  id         Int      @id @default(autoincrement())
+  taskId     Int
+  userId     Int
+  assignedBy Int
+  assignedAt DateTime @default(now())
+
+  task     Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignor User @relation("TaskReviewerAssignedBy", fields: [assignedBy], references: [id], onDelete: Restrict)
+
+  @@unique([taskId, userId])
+  @@index([userId])
+}
+
+model TaskVersion {
+  id            Int              @id @default(autoincrement())
+  taskId        Int
+  versionNumber Int
+  submittedById Int
+  comment       String?
+  status        SubmissionStatus @default(SUBMITTED)
+  reviewerId    Int?
+  reviewNotes   String?
+  reviewedAt    DateTime?
+  submittedAt   DateTime         @default(now())
+
+  task        Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  submitter   User              @relation("SubmittedVersions", fields: [submittedById], references: [id], onDelete: Restrict)
+  reviewer    User?             @relation("ReviewedVersions", fields: [reviewerId], references: [id], onDelete: SetNull)
+  attachments Attachment[]
+  links       SubmissionLink[]
+  approvals   ApprovalRecord[]
+  annotations ImageAnnotation[]
+
+  @@unique([taskId, versionNumber])
+  @@index([submittedById])
+}
+
+model SubmissionLink {
+  id           Int      @id @default(autoincrement())
+  submissionId Int
+  displayName  String
+  url          String
+  createdAt    DateTime @default(now())
+
+  submission TaskVersion @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+// Attachments stored directly in PostgreSQL using BYTEA binary data type
+model Attachment {
+  id           Int       @id @default(autoincrement())
+  taskId       Int?
+  versionId    Int?
+  commentId    Int?
+  fileName     String
+  mimeType     String
+  fileSize     Int       // bytes
+  fileData     Bytes     // BYTEA in PostgreSQL
+  checksum     String?   // SHA-256
+  isReference  Boolean   @default(false)
+  isArchived   Boolean   @default(false)
+  uploadedById Int
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+
+  task        Task?             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  version     TaskVersion?      @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  comment     TaskComment?      @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploadedBy  User              @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  annotations ImageAnnotation[]
+
+  @@index([taskId])
+  @@index([versionId])
+  @@index([uploadedById])
+  @@index([isArchived])
+}
+
+model ImageAnnotation {
+  id           Int      @id @default(autoincrement())
+  attachmentId Int
+  versionId    Int?
+  userId       Int
+  tool         String   // RECTANGLE, CIRCLE, ARROW, FREEHAND, HIGHLIGHT, PIN, TEXT
+  x            Float    // Normalized relative coordinate (0..1)
+  y            Float    // Normalized relative coordinate (0..1)
+  width        Float?   // Normalized relative coordinate (0..1)
+  height       Float?   // Normalized relative coordinate (0..1)
+  points       Json?    // Array of {x, y} normalized coordinates for freehand lines
+  comment      String?
+  color        String   @default("#ef4444")
+  createdAt    DateTime @default(now())
+
+  attachment Attachment   @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+  version    TaskVersion? @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([attachmentId])
+  @@index([versionId])
+}
+
+model TaskComment {
+  id        Int      @id @default(autoincrement())
+  taskId    Int
+  versionId Int?
+  parentId  Int?
+  userId    Int
+  body      String
+  isEdited  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task        Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  parent      TaskComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     TaskComment[] @relation("CommentReplies")
+  user        User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  attachments Attachment[]
+
+  @@index([taskId])
+  @@index([parentId])
+}
+
+model TaskActivityLog {
+  id        Int      @id @default(autoincrement())
+  taskId    Int?
+  userId    Int?
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  task  Task? @relation("TaskActivity", fields: [taskId], references: [id], onDelete: Cascade)
+  actor User? @relation("ActivityActor", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  actorId    Int?
+  action     String   // e.g. "task.create", "user.update", "role.create", "file.upload"
+  entityType String   // "TASK", "USER", "CATEGORY", "FILE", "APPROVAL", "REPORT"
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+model Notification {
+  id         Int              @id @default(autoincrement())
+  userId     Int
+  taskId     Int?
+  type       NotificationType
+  title      String
+  message    String
+  entityType String?
+  entityId   String?
+  isRead     Boolean          @default(false)
+  readAt     DateTime?
+  createdAt  DateTime         @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ApprovalRecord {
+  id           Int      @id @default(autoincrement())
+  taskId       Int
+  submissionId Int?
+  approvedBy   Int
+  status       String   @default("APPROVED") // APPROVED, CHANGES_REQUESTED, REJECTED
+  comment      String?
+  approvedAt   DateTime @default(now())
+
+  task       Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  submission TaskVersion? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  approver   User         @relation(fields: [approvedBy], references: [id], onDelete: Restrict)
+
+  @@index([taskId])
+  @@index([submissionId])
+  @@index([approvedBy])
+}
+
+model DailyReport {
+  id           Int               @id @default(autoincrement())
+  userId       Int
+  departmentId Int
+  reportDate   DateTime
+  status       DailyReportStatus @default(SUBMITTED)
+  notes        String?
+  reviewerId   Int?
+  reviewNotes  String?
+  reviewedAt   DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  user        User               @relation("UserDailyReports", fields: [userId], references: [id], onDelete: Restrict)
+  department  Department         @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  reviewer    User?              @relation("DailyReportReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  fieldValues CustomFieldValue[]
+
+  @@index([userId])
+  @@index([departmentId])
+  @@index([reportDate])
+  @@index([status])
+}
+
+model CustomField {
+  id           Int                   @id @default(autoincrement())
+  departmentId Int?                  // null for global, or category-specific
+  entityType   CustomFieldEntityType @default(TASK)
+  fieldName    String
+  fieldKey     String
+  fieldType    CustomFieldType       @default(TEXT)
+  options      Json?                 // For dropdowns, multi-select, radio
+  isRequired   Boolean               @default(false)
+  placeholder  String?
+  order        Int                   @default(0)
+  createdAt    DateTime              @default(now())
+
+  department Department?        @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  values     CustomFieldValue[]
+
+  @@unique([departmentId, entityType, fieldKey])
+  @@index([departmentId])
+}
+
+model CustomFieldValue {
+  id            Int     @id @default(autoincrement())
+  customFieldId Int
+  taskId        Int?
+  dailyReportId Int?
+  value         String? // Stored string or JSON string
+
+  customField CustomField  @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+  task        Task?        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  dailyReport DailyReport? @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
+
+  @@index([customFieldId])
+  @@index([taskId])
+  @@index([dailyReportId])
+}
+
+model TaskView {
+  id            Int      @id @default(autoincrement())
+  taskId        Int
+  userId        Int
+  firstViewedAt DateTime @default(now())
+  lastViewedAt  DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([userId])
+}
+
+model Session {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
