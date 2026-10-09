@@ -102,9 +102,10 @@ export function UserEditModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-xl border border-neutral-200">
-        <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl border border-neutral-200 overflow-hidden animate-in zoom-in-95 duration-150">
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 bg-neutral-50/70 shrink-0">
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-neutral-800" />
             <h3 className="text-sm font-bold text-neutral-900">
@@ -114,14 +115,16 @@ export function UserEditModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+            className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200/60 transition-colors"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Scrollable Form Body */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3.5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-neutral-700">Full Name *</label>
@@ -278,25 +281,27 @@ export function UserEditModal({
               </div>
             </label>
           </div>
+        </div>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1.5 text-xs text-neutral-600 hover:text-neutral-900 font-semibold"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-1.5 bg-neutral-900 text-white rounded text-xs font-semibold hover:bg-neutral-800 disabled:opacity-50 transition-colors shadow-xs"
-            >
-              {loading ? "Saving Changes..." : "Save Changes"}
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* Fixed Footer */}
+        <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-neutral-100 bg-neutral-50/70 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3.5 py-1.5 text-xs text-neutral-600 hover:text-neutral-900 font-semibold rounded hover:bg-neutral-200/60 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-1.5 bg-neutral-900 text-white rounded text-xs font-semibold hover:bg-neutral-800 disabled:opacity-50 transition-colors shadow-xs"
+          >
+            {loading ? "Saving Changes..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
   );
 }

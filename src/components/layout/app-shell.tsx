@@ -199,7 +199,7 @@ export function AppShell({
       {/* Mobile Top Header */}
       <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-neutral-200 sticky top-0 z-40">
         <div className="flex items-center gap-2">
-          {pathname !== "/dashboard" && pathname !== "/" ? (
+          {pathname !== "/dashboard" && pathname !== "/" && (
             <button
               onClick={() => router.back()}
               className="p-1.5 rounded-md hover:bg-neutral-100 text-neutral-700 inline-flex items-center"
@@ -208,16 +208,15 @@ export function AppShell({
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-          ) : (
-            <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="p-1.5 rounded-md hover:bg-neutral-100 text-neutral-700"
-              aria-label="Toggle navigation"
-            >
-              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           )}
-          <Link href="/dashboard" className="flex items-center">
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="p-1.5 rounded-md hover:bg-neutral-100 text-neutral-700 inline-flex items-center"
+            aria-label="Toggle navigation"
+          >
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+          <Link href="/dashboard" className="flex items-center ml-0.5">
             <Image
               src="/aceone-logo.webp"
               alt="AceOne Solutions"
@@ -269,16 +268,20 @@ export function AppShell({
       )}
 
       {/* Sidebar — Fixed on desktop, overlay on mobile */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 bg-white border-r border-neutral-200 flex flex-col transition-all duration-300 ease-in-out
-          ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
-          md:translate-x-0 md:sticky md:top-0 md:h-screen md:z-30 md:shrink-0
-        `}
-        style={{ width: collapsed ? 68 : 256 }}
-      >
-        {/* Brand Header */}
-        <div className={`border-b border-neutral-100 flex items-center ${collapsed ? "justify-center px-2 py-3" : "justify-between px-5 py-4"}`}>
-          {collapsed ? (
+      {(() => {
+        const isEffectiveCollapsed = collapsed && !mobileOpen;
+
+        return (
+          <aside
+            className={`fixed inset-y-0 left-0 z-50 bg-white border-r border-neutral-200 flex flex-col transition-all duration-300 ease-in-out
+              ${mobileOpen ? "translate-x-0 w-72 shadow-2xl" : "-translate-x-full"}
+              md:translate-x-0 md:sticky md:top-0 md:h-screen md:z-30 md:shrink-0
+            `}
+            style={{ width: mobileOpen ? 288 : (collapsed ? 68 : 256) }}
+          >
+            {/* Brand Header */}
+            <div className={`border-b border-neutral-100 flex items-center ${isEffectiveCollapsed ? "justify-center px-2 py-3" : "justify-between px-5 py-4"}`}>
+              {isEffectiveCollapsed ? (
             /* Collapsed: branded "A" icon → hover shows hamburger menu to expand */
             <button
               type="button"
@@ -416,6 +419,8 @@ export function AppShell({
         </div>
 
       </aside>
+    );
+  })()}
 
       {/* Main Content Area — scrolls independently */}
       <div className="flex-1 flex flex-col min-w-0 md:h-screen md:overflow-y-auto overflow-x-hidden">

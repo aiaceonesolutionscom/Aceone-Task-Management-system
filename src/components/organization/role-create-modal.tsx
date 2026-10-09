@@ -135,29 +135,31 @@ export function RoleCreateModal({
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl max-w-3xl w-full p-6 space-y-5 shadow-2xl border border-neutral-200 my-8 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-neutral-200 overflow-hidden animate-in zoom-in-95 duration-150">
             {/* Header */}
-            <div className="flex items-start justify-between pb-3 border-b border-neutral-100 shrink-0">
+            <div className="flex items-start justify-between px-5 py-4 border-b border-neutral-100 bg-neutral-50/70 shrink-0">
               <div>
                 <div className="flex items-center gap-2">
                   <Shield className="w-5 h-5 text-neutral-900" />
-                  <h3 className="text-base font-bold text-neutral-900">Create Custom Role</h3>
+                  <h3 className="text-sm sm:text-base font-bold text-neutral-900">Create Custom Role</h3>
                 </div>
                 <p className="text-xs text-neutral-500 mt-0.5">
                   Define new organizational role and assign dynamic capabilities and operational permissions.
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setOpen(false)}
-                className="text-neutral-400 hover:text-neutral-700 p-1 rounded-md"
+                className="text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200/60 p-1.5 rounded-md transition-colors"
+                aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Scrollable Content Body */}
-            <div className="space-y-4 overflow-y-auto pr-1 flex-1">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               {/* Basic Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div className="space-y-1">
@@ -318,7 +320,7 @@ export function RoleCreateModal({
             </div>
 
             {/* Footer Buttons */}
-            <div className="flex items-center justify-between pt-3 border-t border-neutral-100 shrink-0">
+            <div className="flex items-center justify-between gap-2.5 px-5 py-3.5 border-t border-neutral-100 bg-neutral-50/70 shrink-0">
               <span className="text-xs text-neutral-500">
                 {selectedPermIds.length} permission(s) configured
               </span>
@@ -327,7 +329,7 @@ export function RoleCreateModal({
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-100 rounded-md transition-colors"
+                  className="px-3.5 py-1.5 text-xs font-semibold text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/60 rounded-md transition-colors"
                 >
                   Cancel
                 </button>
@@ -335,7 +337,7 @@ export function RoleCreateModal({
                   type="button"
                   onClick={handleCreate}
                   disabled={loading}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-md shadow-xs transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold rounded-md shadow-xs transition-colors disabled:opacity-50"
                 >
                   {loading ? "Creating Role..." : "Save Role"}
                 </button>

@@ -206,9 +206,9 @@ export function CategoryManager({ categories }: { categories: any[] }) {
 
       {/* Create / Edit Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-5 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] flex flex-col shadow-xl border border-neutral-200 overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-100 bg-neutral-50/70 shrink-0">
               <h3 className="text-sm font-bold text-neutral-900">
                 {editingCategory ? "Edit Category" : "Create New Category"}
               </h3>
@@ -222,98 +222,100 @@ export function CategoryManager({ categories }: { categories: any[] }) {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3.5">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-700">Category Name *</label>
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  defaultValue={editingCategory?.name || ""}
-                  placeholder="e.g. Graphic Design, Sales, Legal..."
-                  className="w-full px-3 py-2 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-neutral-900"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-700">
-                  Category Code (2-5 letters) *
-                </label>
-                <input
-                  type="text"
-                  name="code"
-                  required
-                  maxLength={6}
-                  defaultValue={editingCategory?.code || ""}
-                  placeholder="e.g. DES, SAL, DEV, MKT"
-                  className="w-full px-3 py-2 text-xs uppercase font-mono border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-neutral-900"
-                />
-                <p className="text-[10px] text-neutral-400">
-                  Used for generating automated employee IDs (e.g. AS1-DES-0001).
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-700">Description</label>
-                <textarea
-                  name="description"
-                  rows={2}
-                  defaultValue={editingCategory?.description || ""}
-                  className="w-full px-3 py-2 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-neutral-900"
-                />
-              </div>
-
-              {editingCategory && (
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3.5">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-neutral-700">Status</label>
-                  <select
-                    name="status"
-                    defaultValue={editingCategory?.status || "ACTIVE"}
-                    className="w-full px-3 py-2 text-xs border border-neutral-300 rounded"
-                  >
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="INACTIVE">INACTIVE</option>
-                    <option value="ARCHIVED">ARCHIVED</option>
-                  </select>
+                  <label className="text-xs font-semibold text-neutral-700">Category Name *</label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    defaultValue={editingCategory?.name || ""}
+                    placeholder="e.g. Graphic Design, Sales, Legal..."
+                    className="w-full px-3 py-2 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                  />
                 </div>
-              )}
 
-              <div className="pt-2 border-t border-neutral-100 space-y-2">
-                <label className="flex items-center gap-2 text-xs font-semibold text-neutral-800 cursor-pointer">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-neutral-700">
+                    Category Code (2-5 letters) *
+                  </label>
                   <input
-                    type="checkbox"
-                    name="dailyReportRequired"
-                    value="true"
-                    defaultChecked={editingCategory?.dailyReportRequired || false}
-                    className="rounded text-blue-600"
+                    type="text"
+                    name="code"
+                    required
+                    maxLength={6}
+                    defaultValue={editingCategory?.code || ""}
+                    placeholder="e.g. DES, SAL, DEV, MKT"
+                    className="w-full px-3 py-2 text-xs uppercase font-mono border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-neutral-900"
                   />
-                  Daily Activity Reporting Required
-                </label>
+                  <p className="text-[10px] text-neutral-400">
+                    Used for generating automated employee IDs (e.g. AS1-DES-0001).
+                  </p>
+                </div>
 
-                <label className="flex items-center gap-2 text-xs font-semibold text-neutral-800 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="approvalRequired"
-                    value="true"
-                    defaultChecked={editingCategory?.approvalRequired ?? true}
-                    className="rounded text-blue-600"
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-neutral-700">Description</label>
+                  <textarea
+                    name="description"
+                    rows={2}
+                    defaultValue={editingCategory?.description || ""}
+                    className="w-full px-3 py-2 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-neutral-900"
                   />
-                  Tasks Require Approval Workflow by Default
-                </label>
+                </div>
+
+                {editingCategory && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-neutral-700">Status</label>
+                    <select
+                      name="status"
+                      defaultValue={editingCategory?.status || "ACTIVE"}
+                      className="w-full px-3 py-2 text-xs border border-neutral-300 rounded"
+                    >
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="INACTIVE">INACTIVE</option>
+                      <option value="ARCHIVED">ARCHIVED</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-neutral-100 space-y-2">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-neutral-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="dailyReportRequired"
+                      value="true"
+                      defaultChecked={editingCategory?.dailyReportRequired || false}
+                      className="rounded text-blue-600"
+                    />
+                    Daily Activity Reporting Required
+                  </label>
+
+                  <label className="flex items-center gap-2 text-xs font-semibold text-neutral-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="approvalRequired"
+                      value="true"
+                      defaultChecked={editingCategory?.approvalRequired ?? true}
+                      className="rounded text-blue-600"
+                    />
+                    Tasks Require Approval Workflow by Default
+                  </label>
+                </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-100">
+              <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-neutral-100 bg-neutral-50/70 shrink-0">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-3 py-1.5 text-xs text-neutral-600 hover:text-neutral-900 font-semibold"
+                  className="px-3.5 py-1.5 text-xs text-neutral-600 hover:text-neutral-900 font-semibold rounded hover:bg-neutral-200/60 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-1.5 bg-neutral-900 text-white rounded text-xs font-semibold hover:bg-neutral-800 disabled:opacity-50"
+                  className="px-4 py-1.5 bg-neutral-900 text-white rounded text-xs font-semibold hover:bg-neutral-800 disabled:opacity-50 transition-colors shadow-xs"
                 >
                   {loading ? "Saving..." : "Save Category"}
                 </button>
