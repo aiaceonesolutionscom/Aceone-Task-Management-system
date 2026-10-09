@@ -15,6 +15,7 @@ import {
   Lock,
 } from "lucide-react";
 import { ReportsCRMViewer, CRMTaskItem } from "@/components/reports/reports-crm-viewer";
+import { OverdueTasksTable, OverdueTaskItem } from "@/components/reports/overdue-tasks-table";
 
 export default async function ReportsAnalyticsPage({
   searchParams,
@@ -177,7 +178,6 @@ export default async function ReportsAnalyticsPage({
         assignees: { include: { user: { select: { id: true, name: true } } } },
       },
       orderBy: { deadline: "asc" },
-      take: 10,
     }),
     db.department.findMany({
       where: {
@@ -230,6 +230,26 @@ export default async function ReportsAnalyticsPage({
         designation: a.user.designation,
       },
     })),
+  }));
+
+  // Format Overdue tasks for client component with pagination
+  const formattedOverdueTasks: OverdueTaskItem[] = overdueList.map((t) => ({
+    id: t.id,
+    taskCode: t.taskCode,
+    title: t.title,
+    department: {
+      id: t.department.id,
+      name: t.department.name,
+    },
+    assignees: t.assignees.map((a) => ({
+      user: {
+        id: a.user.id,
+        name: a.user.name,
+      },
+    })),
+    deadline: t.deadline ? t.deadline.toISOString() : null,
+    priority: t.priority,
+    status: t.status,
   }));
 
   return (
@@ -289,72 +309,12 @@ export default async function ReportsAnalyticsPage({
           </div>
         </div>
 
-        {/* Actionable Overdue Tasks List */}
-        {overdueList.length > 0 && (
-          <div className="bg-white border border-red-200 rounded-lg shadow-2xs overflow-hidden">
-            <div className="px-5 py-3 bg-red-50/60 border-b border-red-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-600" />
-                <h2 className="text-xs font-bold text-red-950 uppercase tracking-wide">
-                  Attention Needed: Overdue Tasks ({overdueTasks})
-                </h2>
-              </div>
-              <span className="text-[11px] font-semibold text-red-700 bg-red-100/60 px-2 py-0.5 rounded">
-                Exceeded Deadline
-              </span>
-            </div>
-
-            <div className="w-full overflow-x-auto no-scrollbar">
-              <table className="w-full text-left text-xs min-w-[550px] md:min-w-full">
-                <thead className="bg-[#fcf9f9] text-[11px] font-bold uppercase text-neutral-500 border-b border-neutral-100">
-                  <tr>
-                    <th className="py-2.5 px-4">Task ID</th>
-                    <th className="py-2.5 px-3">Title</th>
-                    <th className="py-2.5 px-3">Category</th>
-                    <th className="py-2.5 px-3">Assignee</th>
-                    <th className="py-2.5 px-3">Deadline</th>
-                    <th className="py-2.5 px-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {overdueList.map((t) => (
-                    <tr key={t.id} className="hover:bg-red-50/20">
-                      <td className="py-2.5 px-4 font-mono font-bold text-blue-600">
-                        <Link href={`/tasks/${t.id}`} className="hover:underline">
-                          {t.taskCode || `#${t.id}`}
-                        </Link>
-                      </td>
-                      <td className="py-2.5 px-3 font-semibold text-neutral-900 max-w-[200px] truncate">
-                        {t.title}
-                      </td>
-                      <td className="py-2.5 px-3 text-neutral-600">{t.department.name}</td>
-                      <td className="py-2.5 px-3 text-neutral-700">
-                        {t.assignees.length > 0
-                          ? t.assignees.map((a) => a.user.name).join(", ")
-                          : "Unassigned"}
-                      </td>
-                      <td className="py-2.5 px-3 font-semibold text-red-600">
-                        {t.deadline
-                          ? new Date(t.deadline).toLocaleDateString([], {
-                              month: "short",
-                              day: "numeric",
-                            })
-                          : "—"}
-                      </td>
-                      <td className="py-2.5 px-4 text-right">
-                        <Link
-                          href={`/tasks/${t.id}`}
-                          className="inline-flex items-center text-xs font-semibold text-blue-600 hover:underline"
-                        >
-                          Workspace →
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {/* Actionable Overdue Tasks List with Pagination & Search */}
+        {formattedOverdueTasks.length > 0 && (
+          <OverdueTasksTable
+            tasks={formattedOverdueTasks}
+            totalOverdueCount={overdueTasks}
+          />
         )}
 
         {/* CRM SECTION — Enterprise Deep Filter Records Explorer with Pagination */}
