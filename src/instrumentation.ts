@@ -1,7 +1,7 @@
-import { logger } from "@/lib/logger";
-
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { logger } = await import("@/lib/logger");
+
     // Catch any uncaught Node.js exceptions and log to logs/error.log
     process.on("uncaughtException", (error) => {
       logger.error("Uncaught Server Exception", { error, action: "process.uncaughtException" }, true);

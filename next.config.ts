@@ -33,6 +33,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  serverExternalPackages: ["pg", "@prisma/adapter-pg", "pg-connection-string", "pgpass", "bcryptjs"],
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
   compiler: {
