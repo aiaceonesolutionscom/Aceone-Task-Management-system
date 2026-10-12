@@ -108,6 +108,7 @@ interface ChatHubViewProps {
   taskChannels: ChannelItem[];
   currentUserId: number;
   currentUserName?: string;
+  allUsers?: { id: number; name: string; username?: string | null; designation?: string | null; role?: string }[];
   isEmployee: boolean;
 }
 
@@ -116,6 +117,7 @@ export function ChatHubView({
   taskChannels,
   currentUserId,
   currentUserName = "",
+  allUsers = [],
   isEmployee,
 }: ChatHubViewProps) {
   // Mode: "everyone" (Category Team Chat) or "manager" (Manager & Task Review)
@@ -207,18 +209,38 @@ export function ChatHubView({
     return channelMembers.filter((m) => m.id !== currentUserId);
   }, [channelMembers, currentUserId]);
 
+  // Combined mentionable members: Channel members first, then all organization users
+  const allMentionableMembers = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; designation?: string | null; role?: string }>();
+    channelMembers.forEach((m) => {
+      if (m.id !== currentUserId) map.set(m.id, m);
+    });
+    allUsers.forEach((u) => {
+      if (u.id !== currentUserId && !map.has(u.id)) {
+        map.set(u.id, {
+          id: u.id,
+          name: u.name,
+          designation: u.designation,
+          role: u.role,
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [channelMembers, allUsers, currentUserId]);
+
   // Mention Candidate List: filter by query when user types @
   const mentionCandidates = useMemo(() => {
     if (mentionQuery === null) return [];
-    const q = mentionQuery.toLowerCase();
-    return otherMembers
+    const q = (mentionQuery || "").toLowerCase();
+    return allMentionableMembers
       .filter(
         (m) =>
+          !q ||
           m.name.toLowerCase().includes(q) ||
           (m.designation && m.designation.toLowerCase().includes(q))
       )
-      .slice(0, 8);
-  }, [mentionQuery, otherMembers]);
+      .slice(0, 10);
+  }, [mentionQuery, allMentionableMembers]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -942,15 +964,15 @@ export function ChatHubView({
               >
                 {/* Floating Mention Selector Dropdown */}
                 {mentionQuery !== null && mentionCandidates.length > 0 && (
-                  <div className="absolute bottom-full mb-2 left-3 w-72 bg-white rounded-xl shadow-2xl border border-neutral-200 overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
-                    <div className="p-2 border-b border-neutral-100 bg-neutral-50/80 flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 flex items-center gap-1">
-                        <AtSign className="w-3 h-3 text-blue-600" />
+                  <div className="absolute bottom-[calc(100%+8px)] left-3 w-80 bg-white rounded-xl shadow-2xl border border-neutral-300 overflow-hidden z-[150] animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <div className="p-2.5 border-b border-neutral-100 bg-neutral-50/90 flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-600 flex items-center gap-1.5">
+                        <AtSign className="w-3.5 h-3.5 text-blue-600" />
                         Mention Team Member
                       </span>
-                      <span className="text-[9px] text-neutral-400">↑↓ to navigate · Enter</span>
+                      <span className="text-[10px] text-neutral-400">↑↓ to navigate · Enter / Click</span>
                     </div>
-                    <div className="max-h-52 overflow-y-auto divide-y divide-neutral-50">
+                    <div className="max-h-56 overflow-y-auto divide-y divide-neutral-100">
                       {mentionCandidates.map((cand, idx) => {
                         const isSelected = idx === selectedMentionIndex;
                         return (
@@ -961,20 +983,18 @@ export function ChatHubView({
                               e.preventDefault();
                               selectMention(cand);
                             }}
-                            className={`w-full text-left px-3 py-2 flex items-center gap-2.5 transition-colors cursor-pointer ${
-                              isSelected ? "bg-blue-50 text-blue-900" : "hover:bg-neutral-50 text-neutral-800"
+                            className={`w-full text-left px-3.5 py-2.5 flex items-center gap-2.5 transition-colors cursor-pointer ${
+                              isSelected ? "bg-blue-50 text-blue-900 font-semibold" : "hover:bg-neutral-50 text-neutral-800"
                             }`}
                           >
-                            <div className="w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
+                            <div className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
                               {cand.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-semibold truncate leading-tight">{cand.name}</p>
-                              {cand.designation && (
-                                <p className="text-[10px] text-neutral-400 truncate leading-tight mt-0.5">
-                                  {cand.designation}
-                                </p>
-                              )}
+                              <p className="text-[10px] text-neutral-400 truncate leading-tight mt-0.5">
+                                {cand.designation || (cand as any).role || "Team Member"}
+                              </p>
                             </div>
                           </button>
                         );
@@ -982,6 +1002,25 @@ export function ChatHubView({
                     </div>
                   </div>
                 )}
+
+                {/* Quick @ Mention trigger button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (mentionQuery !== null) {
+                      setMentionQuery(null);
+                    } else {
+                      setMessageInput((prev) => (prev ? `${prev} @` : "@"));
+                      setMentionQuery("");
+                      setMentionCursorIndex(messageInput.length ? messageInput.length + 1 : 0);
+                      setTimeout(() => inputRef.current?.focus(), 10);
+                    }
+                  }}
+                  title="Mention someone (@)"
+                  className="p-2 text-neutral-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors cursor-pointer border border-neutral-200"
+                >
+                  <AtSign className="w-4 h-4" />
+                </button>
 
                 <input
                   ref={inputRef}
@@ -991,8 +1030,8 @@ export function ChatHubView({
                   onKeyDown={handleInputKeyDown}
                   placeholder={
                     activeTab === "everyone"
-                      ? `Message everyone in ${activeChannel.department.name}... (Type @ to mention)`
-                      : `Message on ${activeChannel.taskCode}... (Type @ to mention)`
+                      ? `Message everyone in ${activeChannel.department.name}... (Click @ or type @ to mention)`
+                      : `Message on ${activeChannel.taskCode}... (Click @ or type @ to mention)`
                   }
                   className="flex-1 px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-md focus:bg-white focus:outline-none focus:ring-1 focus:ring-neutral-900"
                 />

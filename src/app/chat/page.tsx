@@ -282,6 +282,19 @@ export default async function ChatPage() {
     updatedAt: t.updatedAt.toISOString(),
   }));
 
+  // Fetch all active team members for foolproof @mentions
+  const allActiveUsers = await db.user.findMany({
+    where: { status: "ACTIVE" },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      designation: true,
+      role: { select: { name: true, code: true } },
+    },
+    orderBy: { name: "asc" },
+  });
+
   return (
     <AppShell user={user}>
       <ChatHubView
@@ -289,6 +302,13 @@ export default async function ChatPage() {
         taskChannels={formattedReviewTasks}
         currentUserId={user.id}
         currentUserName={user.name}
+        allUsers={allActiveUsers.map((u) => ({
+          id: u.id,
+          name: u.name,
+          username: u.username,
+          designation: u.designation,
+          role: u.role.name,
+        }))}
         isEmployee={isEmployee}
       />
     </AppShell>
