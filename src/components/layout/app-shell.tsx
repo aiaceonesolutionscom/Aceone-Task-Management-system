@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -227,13 +226,11 @@ export function AppShell({
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <Link href="/dashboard" className="flex items-center ml-0.5">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/aceone-logo.webp"
               alt="AceOne Solutions"
-              width={120}
-              height={30}
-              className="h-7 w-auto object-contain"
-              priority
+              className="h-7 w-auto object-contain max-w-[120px]"
             />
           </Link>
         </div>
@@ -301,26 +298,22 @@ export function AppShell({
               title="Expand sidebar"
             >
               {/* Branded AceOne A emblem — visible by default, hidden on hover */}
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/aceone-icon.png"
                 alt="AceOne"
-                width={32}
-                height={32}
                 className="w-7 h-7 object-contain select-none group-hover:opacity-0 transition-opacity duration-150"
-                priority
               />
               {/* Hamburger — hidden by default, visible on hover */}
               <Menu className="w-5 h-5 text-neutral-600 absolute inset-0 m-auto opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
             </button>
           ) : (
             <Link href="/dashboard" className="flex items-center">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/aceone-logo.webp"
                 alt="AceOne Solutions"
-                width={140}
-                height={36}
-                className="h-8 w-auto object-contain"
-                priority
+                className="h-8 w-auto object-contain max-w-[140px]"
               />
             </Link>
           )}

@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getEffectiveUser, hasEffectivePermission } from "@/lib/scopes";
@@ -664,12 +663,11 @@ export default async function DashboardPage() {
                 Workspace Setup Guide
               </span>
               <div className="flex items-center gap-3 mt-1">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src="/aceone-logo.webp"
                   alt="AceOne Solutions"
-                  width={140}
-                  height={34}
-                  className="h-7 w-auto object-contain"
+                  className="h-7 w-auto object-contain max-w-[140px]"
                 />
                 <h2 className="text-base font-bold text-neutral-900">
                   Welcome to Task Management System
