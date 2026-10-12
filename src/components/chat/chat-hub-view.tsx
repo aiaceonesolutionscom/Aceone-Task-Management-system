@@ -21,8 +21,9 @@ import {
   Info,
   X,
   Eye,
+  AtSign,
 } from "lucide-react";
-import { playNotificationSound } from "@/lib/audio-chime";
+import { playNotificationSound, playMentionRingSound } from "@/lib/audio-chime";
 import { toast } from "sonner";
 import { formatTime12, formatDateTime12 } from "@/lib/date-utils";
 
@@ -48,6 +49,34 @@ function formatMessageDateHeader(dateStr: string): string {
       year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
     });
   }
+}
+
+function renderMessageBody(body: string, isSelf: boolean) {
+  if (!body) return null;
+  // Splits and highlights @mentions
+  const parts = body.split(/(@[a-zA-Z0-9_.-]+(?:\s+[a-zA-Z0-9_.-]+)?)/g);
+  return (
+    <>
+      {parts.map((part, idx) => {
+        if (part.startsWith("@") && part.length > 1) {
+          return (
+            <span
+              key={idx}
+              className={`inline-flex items-center gap-0.5 font-bold px-1.5 py-0.5 mx-0.5 rounded text-[11px] transition-colors ${
+                isSelf
+                  ? "bg-blue-500/30 text-sky-200 border border-sky-400/30"
+                  : "bg-blue-100 text-blue-800 border border-blue-200"
+              }`}
+            >
+              <AtSign className="w-2.5 h-2.5 inline -mt-0.5" />
+              <span>{part.substring(1)}</span>
+            </span>
+          );
+        }
+        return <React.Fragment key={idx}>{part}</React.Fragment>;
+      })}
+    </>
+  );
 }
 
 interface ChannelItem {
@@ -78,6 +107,7 @@ interface ChatHubViewProps {
   teamChannels: ChannelItem[];
   taskChannels: ChannelItem[];
   currentUserId: number;
+  currentUserName?: string;
   isEmployee: boolean;
 }
 
@@ -85,6 +115,7 @@ export function ChatHubView({
   teamChannels,
   taskChannels,
   currentUserId,
+  currentUserName = "",
   isEmployee,
 }: ChatHubViewProps) {
   // Mode: "everyone" (Category Team Chat) or "manager" (Manager & Task Review)
@@ -104,6 +135,13 @@ export function ChatHubView({
   const soundEnabled = true;
   const [messageInput, setMessageInput] = useState("");
   const [sending, setSending] = useState(false);
+
+  // @mention Selector states
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionCursorIndex, setMentionCursorIndex] = useState<number>(-1);
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState<number>(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const [activeComments, setActiveComments] = useState<any[]>(
     channelsList[0]?.comments ?? []
   );
@@ -169,6 +207,75 @@ export function ChatHubView({
     return channelMembers.filter((m) => m.id !== currentUserId);
   }, [channelMembers, currentUserId]);
 
+  // Mention Candidate List: filter by query when user types @
+  const mentionCandidates = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const q = mentionQuery.toLowerCase();
+    return otherMembers
+      .filter(
+        (m) =>
+          m.name.toLowerCase().includes(q) ||
+          (m.designation && m.designation.toLowerCase().includes(q))
+      )
+      .slice(0, 8);
+  }, [mentionQuery, otherMembers]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setMessageInput(val);
+    const cursorPos = e.target.selectionStart || 0;
+
+    // Detect if cursor is preceded by @mention
+  
+    const textBefore = val.slice(0, cursorPos);
+    const match = textBefore.match(/@([a-zA-Z0-9_.-]*)$/);
+    if (match) {
+      setMentionQuery(match[1]);
+      setMentionCursorIndex(cursorPos - match[0].length);
+      setSelectedMentionIndex(0);
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const selectMention = (member: { id: number; name: string }) => {
+    if (!member) return;
+    const before = messageInput.slice(0, mentionCursorIndex);
+    const afterMatch = messageInput.slice(mentionCursorIndex).replace(/^@[a-zA-Z0-9_.-]*/, "");
+    const updated = `${before}@${member.name} ${afterMatch}`;
+    setMessageInput(updated);
+    setMentionQuery(null);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 10);
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (mentionQuery !== null && mentionCandidates.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedMentionIndex((prev) => (prev + 1) % mentionCandidates.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedMentionIndex(
+          (prev) => (prev - 1 + mentionCandidates.length) % mentionCandidates.length
+        );
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        selectMention(mentionCandidates[selectedMentionIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
+        setMentionQuery(null);
+        return;
+      }
+    }
+  };
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastCountRef = useRef<number>(activeComments.length);
 
@@ -230,15 +337,34 @@ export function ChatHubView({
           if (fresh.length > lastCountRef.current) {
             const lastMsg = fresh[fresh.length - 1];
             if (lastMsg && lastMsg.userId !== currentUserId) {
-              if (soundEnabled) {
-                playNotificationSound();
-              }
-              toast.info(
-                `New message from ${lastMsg.user?.name || "Team Member"} in ${
-                  activeTab === "everyone" ? "Category Channel" : "Task Discussion"
-                }`,
-                { description: lastMsg.body }
+              const myNameLower = (currentUserName || "").toLowerCase();
+              const isMentioned = Boolean(
+                myNameLower &&
+                lastMsg.body &&
+                lastMsg.body.toLowerCase().includes(`@${myNameLower}`)
               );
+
+              if (soundEnabled) {
+                if (isMentioned) {
+                  playMentionRingSound();
+                } else {
+                  playNotificationSound();
+                }
+              }
+
+              if (isMentioned) {
+                toast.info(`🔔 You were mentioned by ${lastMsg.user?.name || "Someone"}!`, {
+                  description: lastMsg.body,
+                  duration: 6000,
+                });
+              } else {
+                toast.info(
+                  `New message from ${lastMsg.user?.name || "Team Member"} in ${
+                    activeTab === "everyone" ? "Category Channel" : "Task Discussion"
+                  }`,
+                  { description: lastMsg.body }
+                );
+              }
             }
             scrollToBottom(true);
           }
@@ -755,7 +881,7 @@ export function ChatHubView({
                                   : "bg-white text-neutral-900 border border-neutral-200 rounded-tl-none"
                               }`}
                             >
-                              <div>{msg.body}</div>
+                              <div className="break-words">{renderMessageBody(msg.body, isSelf)}</div>
 
                               {/* WhatsApp-Style Timestamp & Read Ticks (inside/bottom-right of bubble) */}
                               <div
@@ -809,19 +935,64 @@ export function ChatHubView({
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Compose Message Box */}
+              {/* Compose Message Box with @mention dropdown */}
               <form
                 onSubmit={handleSendMessage}
-                className="p-3 border-t border-neutral-200 bg-white flex items-center gap-2"
+                className="p-3 border-t border-neutral-200 bg-white flex items-center gap-2 relative"
               >
+                {/* Floating Mention Selector Dropdown */}
+                {mentionQuery !== null && mentionCandidates.length > 0 && (
+                  <div className="absolute bottom-full mb-2 left-3 w-72 bg-white rounded-xl shadow-2xl border border-neutral-200 overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <div className="p-2 border-b border-neutral-100 bg-neutral-50/80 flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 flex items-center gap-1">
+                        <AtSign className="w-3 h-3 text-blue-600" />
+                        Mention Team Member
+                      </span>
+                      <span className="text-[9px] text-neutral-400">↑↓ to navigate · Enter</span>
+                    </div>
+                    <div className="max-h-52 overflow-y-auto divide-y divide-neutral-50">
+                      {mentionCandidates.map((cand, idx) => {
+                        const isSelected = idx === selectedMentionIndex;
+                        return (
+                          <button
+                            key={cand.id}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              selectMention(cand);
+                            }}
+                            className={`w-full text-left px-3 py-2 flex items-center gap-2.5 transition-colors cursor-pointer ${
+                              isSelected ? "bg-blue-50 text-blue-900" : "hover:bg-neutral-50 text-neutral-800"
+                            }`}
+                          >
+                            <div className="w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
+                              {cand.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold truncate leading-tight">{cand.name}</p>
+                              {cand.designation && (
+                                <p className="text-[10px] text-neutral-400 truncate leading-tight mt-0.5">
+                                  {cand.designation}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <input
+                  ref={inputRef}
                   type="text"
                   value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
+                  onChange={handleInputChange}
+                  onKeyDown={handleInputKeyDown}
                   placeholder={
                     activeTab === "everyone"
-                      ? `Message everyone in ${activeChannel.department.name}... (Press Enter)`
-                      : `Message manager/reviewer on ${activeChannel.taskCode}... (Press Enter)`
+                      ? `Message everyone in ${activeChannel.department.name}... (Type @ to mention)`
+                      : `Message on ${activeChannel.taskCode}... (Type @ to mention)`
                   }
                   className="flex-1 px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-md focus:bg-white focus:outline-none focus:ring-1 focus:ring-neutral-900"
                 />

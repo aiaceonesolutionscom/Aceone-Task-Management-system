@@ -184,6 +184,7 @@ export async function updateUserScopesAction(data: {
   categoryScopeIds: number[];
   assignmentScopeIds: number[];
   approvalScopeIds: number[];
+  permissionOverrides?: { permissionKey: string; isGranted: boolean }[];
 }) {
   const user = await requireUser();
   const effectiveUser = await getEffectiveUser(user.id);
@@ -191,7 +192,7 @@ export async function updateUserScopesAction(data: {
     throw new Error("Forbidden: You do not have permission to manage user scopes.");
   }
 
-  const { userId, primaryDepartmentId, categoryScopeIds, assignmentScopeIds, approvalScopeIds } = data;
+  const { userId, primaryDepartmentId, categoryScopeIds, assignmentScopeIds, approvalScopeIds, permissionOverrides } = data;
 
   await db.$transaction(async (tx) => {
     // Update primary department if specified
@@ -225,6 +226,20 @@ export async function updateUserScopesAction(data: {
         data: { userId, departmentId: dId },
       });
     }
+
+    // 4. Sync UserPermissionOverride (Granular specific rights)
+    if (permissionOverrides !== undefined) {
+      await tx.userPermissionOverride.deleteMany({ where: { userId } });
+      for (const po of permissionOverrides) {
+        await tx.userPermissionOverride.create({
+          data: {
+            userId,
+            permissionKey: po.permissionKey,
+            isGranted: po.isGranted,
+          },
+        });
+      }
+    }
   });
 
   await recordAudit({
@@ -237,6 +252,7 @@ export async function updateUserScopesAction(data: {
       categoryScopeIds,
       assignmentScopeIds,
       approvalScopeIds,
+      permissionOverridesCount: permissionOverrides?.length || 0,
     },
   });
 

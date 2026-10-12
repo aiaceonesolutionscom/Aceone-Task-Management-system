@@ -791,17 +791,21 @@ export async function addTaskComment(
     },
   });
 
-  // Parse @mentions (e.g. @saboor or @muneeb)
+  // Parse @mentions (e.g. @Muneeb or @Rohan or full names)
   const notifiedUserIds = new Set<number>([user.id]);
-  const mentionMatches = input.body.match(/@([a-zA-Z0-9_.-]+)/g);
+  const mentionMatches = input.body.match(/@([a-zA-Z0-9_.-]+(?:\s+[a-zA-Z0-9_.-]+)?)/g);
   if (mentionMatches) {
     for (const match of mentionMatches) {
-      const username = match.substring(1).toLowerCase();
+      const rawTerm = match.substring(1).trim().toLowerCase();
+      // Try exact name or username first
       const mentionedUser = await db.user.findFirst({
         where: {
+          status: "ACTIVE",
           OR: [
-            { username: { equals: username, mode: "insensitive" } },
-            { name: { contains: username, mode: "insensitive" } },
+            { username: { equals: rawTerm, mode: "insensitive" } },
+            { name: { equals: rawTerm, mode: "insensitive" } },
+            { name: { startsWith: rawTerm, mode: "insensitive" } },
+            { username: { startsWith: rawTerm, mode: "insensitive" } },
           ],
         },
       });
@@ -811,8 +815,8 @@ export async function addTaskComment(
         await sendNotification({
           userId: mentionedUser.id,
           type: "MENTION",
-          title: "You were mentioned",
-          message: `${user.name} mentioned you in a comment: "${input.body.slice(0, 80)}"`,
+          title: "You were mentioned in chat",
+          message: `${user.name} mentioned you: "${input.body.slice(0, 100)}"`,
           taskId: input.taskId,
         });
       }

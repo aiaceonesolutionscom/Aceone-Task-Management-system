@@ -20,6 +20,21 @@ function getAudioContext(): AudioContext | null {
   return audioCtx;
 }
 
+if (typeof window !== "undefined") {
+  const unlockAudio = () => {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+  };
+  window.addEventListener("pointerdown", unlockAudio, { once: false, passive: true });
+  window.addEventListener("keydown", unlockAudio, { once: false, passive: true });
+}
+
+export function unlockAudioContext() {
+  getAudioContext();
+}
+
 /**
  * Plays a modern, pleasant 2-tone melodic notification chime.
  * e.g. for new task notifications, chat messages, or status changes.
@@ -98,5 +113,38 @@ export function playUrgentAlertSound() {
     });
   } catch (err) {
     console.debug("Alert sound suppressed:", err);
+  }
+}
+
+/**
+ * Plays a distinct melodious phone/ring alert (2-pulse bell chime) specifically for @mentions.
+ */
+export function playMentionRingSound() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    // Pulse 1: 784 Hz (G5) -> 1046.5 Hz (C6)
+    [0, 0.18].forEach((offset) => {
+      const t = now + offset;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, t);
+      osc.frequency.exponentialRampToValueAtTime(1174.66, t + 0.12); // D6
+
+      gain.gain.setValueAtTime(0.001, t);
+      gain.gain.linearRampToValueAtTime(0.3, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(t);
+      osc.stop(t + 0.15);
+    });
+  } catch (err) {
+    console.debug("Mention chime playback suppressed:", err);
   }
 }

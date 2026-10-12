@@ -106,9 +106,40 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Calculate unread chat messages count for snappy sidebar badge
+  let unreadChatCount = 0;
+  try {
+    const unreadChatRes: any[] = await db.$queryRawUnsafe(
+      `
+      SELECT COUNT(c.id)::int as count
+      FROM "TaskComment" c
+      JOIN "Task" t ON t.id = c."taskId"
+      WHERE c."userId" != $1::int
+        AND c."createdAt" >= NOW() - INTERVAL '14 days'
+        AND (
+          t."createdBy" = $1::int
+          OR t."assignedBy" = $1::int
+          OR EXISTS (SELECT 1 FROM "TaskAssignee" ta WHERE ta."taskId" = t.id AND ta."userId" = $1::int)
+          OR EXISTS (SELECT 1 FROM "TaskReviewer" tr WHERE tr."taskId" = t.id AND tr."userId" = $1::int)
+          OR EXISTS (SELECT 1 FROM "DepartmentMember" dm WHERE dm."departmentId" = t."departmentId" AND dm."userId" = $1::int)
+          OR EXISTS (SELECT 1 FROM "UserCategoryScope" ucs WHERE ucs."departmentId" = t."departmentId" AND ucs."userId" = $1::int)
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM "ChatMessageRead" cmr
+          WHERE cmr."commentId" = c.id AND cmr."userId" = $1::int
+        );
+      `,
+      user.id
+    );
+    unreadChatCount = unreadChatRes[0]?.count ?? 0;
+  } catch {
+    unreadChatCount = 0;
+  }
+
   return NextResponse.json({
     notifications,
     unreadCount,
+    unreadChatCount,
     activeTasksCount,
     pendingApprovalsCount,
   });

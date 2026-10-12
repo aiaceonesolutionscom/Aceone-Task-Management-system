@@ -17,6 +17,7 @@ export default async function ScopesPage() {
         categoryScopes: { include: { department: true } },
         assignmentScopes: { include: { department: true } },
         approvalScopes: { include: { department: true } },
+        permissionOverrides: true,
       },
       orderBy: { name: "asc" },
     }),

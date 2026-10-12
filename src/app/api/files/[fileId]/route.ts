@@ -75,7 +75,7 @@ export async function GET(
       status: 304,
       headers: {
         "ETag": etag,
-        "Cache-Control": "private, max-age=86400, stale-while-revalidate=3600",
+        "Cache-Control": "public, max-age=31536000, immutable",
       },
     });
   }
@@ -89,7 +89,7 @@ export async function GET(
       "Content-Disposition": disposition,
       "X-Content-Type-Options": "nosniff",
       "ETag": etag,
-      "Cache-Control": "private, max-age=86400, stale-while-revalidate=3600",
+      "Cache-Control": "public, max-age=31536000, immutable",
     },
   });
 }

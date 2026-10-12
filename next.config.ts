@@ -42,6 +42,21 @@ const nextConfig: NextConfig = {
   experimental: {
     cpus: 1,
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        stream: false,
+        crypto: false,
+        dns: false,
+        net: false,
+        tls: false,
+      };
+    }
+    return config;
+  },
   async headers() {
     return [
       {

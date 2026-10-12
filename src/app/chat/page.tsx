@@ -288,6 +288,7 @@ export default async function ChatPage() {
         teamChannels={teamChannels}
         taskChannels={formattedReviewTasks}
         currentUserId={user.id}
+        currentUserName={user.name}
         isEmployee={isEmployee}
       />
     </AppShell>

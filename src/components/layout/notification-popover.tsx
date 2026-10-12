@@ -15,7 +15,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
-import { playNotificationSound } from "@/lib/audio-chime";
+import { playNotificationSound, playMentionRingSound } from "@/lib/audio-chime";
 import { formatDateTime12 } from "@/lib/date-utils";
 
 // Global session cache to prevent duplicate toasts across desktop & mobile instances
@@ -42,6 +42,7 @@ export function NotificationPopover({
     activeTasksCount: number;
     pendingApprovalsCount: number;
     unreadCount: number;
+    unreadChatCount?: number;
   }) => void;
   isPrimary?: boolean;
 }) {
@@ -96,7 +97,11 @@ export function NotificationPopover({
           if (!n.isRead && !globalToastedIds.has(n.id)) {
             globalToastedIds.add(n.id);
             if (enableSound) {
-              playNotificationSound();
+              if (n.type === "MENTION") {
+                playMentionRingSound();
+              } else {
+                playNotificationSound();
+              }
             }
             if (enableToast) {
               toast.info(n.title, {
@@ -125,6 +130,7 @@ export function NotificationPopover({
           activeTasksCount: data.activeTasksCount ?? 0,
           pendingApprovalsCount: data.pendingApprovalsCount ?? 0,
           unreadCount: newUnread,
+          unreadChatCount: data.unreadChatCount ?? 0,
         });
       }
     } catch {

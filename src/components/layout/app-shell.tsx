@@ -65,6 +65,7 @@ export function AppShell({
   const [collapsed, setCollapsed] = useState(false);
   const [realTimeTasksCount, setRealTimeTasksCount] = useState<number>(0);
   const [realTimeApprovalsCount, setRealTimeApprovalsCount] = useState<number>(0);
+  const [realTimeChatCount, setRealTimeChatCount] = useState<number>(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Persist collapsed state & auto-collapse on compact screens (e.g. laptops < 1200px) or user preferences
@@ -136,7 +137,16 @@ export function AppShell({
           },
         ]
       : []),
-    ...(hasPerm("chat.view") ? [{ label: "Chat & Discussions", href: "/chat", icon: MessageSquare }] : []),
+    ...(hasPerm("chat.view")
+      ? [
+          {
+            label: "Chat & Discussions",
+            href: "/chat",
+            icon: MessageSquare,
+            badge: realTimeChatCount > 0 ? realTimeChatCount : undefined,
+          },
+        ]
+      : []),
     ...(hasPerm("file.view") ? [{ label: "Media Library", href: "/media", icon: Images }] : []),
     ...(hasPerm("report.view") || hasPerm("report.create")
       ? [{ label: "Daily Reports", href: "/daily-reports", icon: FileText }]
@@ -231,9 +241,10 @@ export function AppShell({
           <NotificationPopover
             isPrimary={false}
             initialUnreadCount={unreadCount}
-            onSyncCounts={({ activeTasksCount, pendingApprovalsCount }) => {
+            onSyncCounts={({ activeTasksCount, pendingApprovalsCount, unreadChatCount }) => {
               setRealTimeTasksCount(activeTasksCount);
               setRealTimeApprovalsCount(pendingApprovalsCount);
+              setRealTimeChatCount(unreadChatCount ?? 0);
             }}
           />
           <Link href="/profile" className="p-1 rounded-full hover:bg-neutral-100" title="My Profile">
@@ -470,9 +481,10 @@ export function AppShell({
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <NotificationPopover
               initialUnreadCount={unreadCount}
-              onSyncCounts={({ activeTasksCount, pendingApprovalsCount }) => {
+              onSyncCounts={({ activeTasksCount, pendingApprovalsCount, unreadChatCount }) => {
                 setRealTimeTasksCount(activeTasksCount);
                 setRealTimeApprovalsCount(pendingApprovalsCount);
+                setRealTimeChatCount(unreadChatCount ?? 0);
               }}
             />
             <div className="h-4 w-[1px] bg-neutral-200 mx-1" />
